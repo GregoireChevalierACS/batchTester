@@ -14,6 +14,16 @@ pnpm simuler --aide
 
 La même graine (`-g`) et les mêmes paramètres (`-p`) redonnent toujours exactement le même rapport.
 
+### Interface
+
+```bash
+pnpm studio      # construit l'interface et ouvre le serveur sur http://127.0.0.1:5174
+```
+
+Chaque système du dossier `systemes/` est proposé. Chaque curseur ou champ modifié relance le lot (le précédent est annulé) et met à jour les graphiques : taux par catégorie avec intervalle de confiance, distribution, convergence, séries par tour.
+
+En développement : `pnpm serveur` dans un terminal, `pnpm dev:web` dans un autre (Vite transmet `/api` au serveur).
+
 ## Brancher un système
 
 Un système est un module dont l'export par défaut décrit ses paramètres et ses mesures, et joue une itération. Tout le hasard passe par `aleatoire` :

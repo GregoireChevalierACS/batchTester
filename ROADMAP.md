@@ -31,9 +31,10 @@ Deux adapters tiennent ce contrat :
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/core` (domaine)       | Générateur aléatoire à graine, schéma des paramètres, statistiques (moyenne, percentiles, histogrammes, intervalles de confiance) |
 | `packages/runner` (application) | Lancement d'un lot, balayage (1 paramètre ou grille de 2), comparaison A/B, parallélisme borné par workers                        |
-| `packages/adapters`             | Système TypeScript, processus externe, stockage des lancements (SQLite intégré à Node), serveur local HTTP/WebSocket              |
+| `packages/adapters`             | Chargement et découverte des systèmes, système TypeScript, processus externe, stockage des lancements (SQLite intégré à Node)     |
 | `apps/cli`                      | Ligne de commande : lance un lot sur un système et affiche le rapport texte ou le résumé JSON                                     |
-| `apps/ui`                       | Vite + React : curseurs et champs texte générés depuis la définition, progression en direct, graphiques ECharts                   |
+| `apps/serveur`                  | Serveur local Fastify : liste des systèmes, lots envoyés en flux NDJSON et annulables (ADR 0002)                                  |
+| `apps/web`                      | Vite + React : curseurs et champs texte générés depuis la définition, progression en direct, graphiques ECharts                   |
 | `systemes/`                     | Exemples qui prouvent la généricité : combat 1 contre 1, mini jeu de cartes                                                       |
 
 **Reproductibilité** : même graine maître et mêmes paramètres donnent exactement les mêmes résultats ; chaque itération reçoit une graine dérivée. Chaque lancement enregistré garde paramètres, graine, résultats et version du système.
@@ -65,14 +66,14 @@ Deux adapters tiennent ce contrat :
 
 Les simulations d'un système TypeScript tournent dans le processus principal : la limite de simultanéité sert aux simulateurs asynchrones. Des workers ne seront ajoutés que si une itération devient assez coûteuse pour le justifier (phase 4).
 
-## Phase 2 — Interface
+## Phase 2 — Interface ✅
 
 **Terminée quand** : modifier un curseur ou un champ texte relance le lot et met à jour les graphiques, sans recharger la page.
 
-- [ ] Serveur local (HTTP + WebSocket) avec progression en direct.
-- [ ] Formulaire généré depuis la définition du système : curseurs et champs texte synchronisés.
-- [ ] Graphiques : distribution, taux par catégorie, convergence, séries par tour.
-- [ ] Choix du système parmi ceux disponibles.
+- [x] Serveur local avec progression en direct : flux NDJSON plutôt que WebSocket, lot annulé dès qu'un réglage change (ADR 0002).
+- [x] Formulaire généré depuis la définition du système : curseurs et champs texte synchronisés, graine et nombre d'itérations.
+- [x] Graphiques : taux par catégorie avec intervalle de confiance, distribution, convergence, séries par tour, chacun avec son tableau de données.
+- [x] Choix du système parmi ceux du dossier `systemes/`, découverts au démarrage.
 
 ## Phase 3 — Historique et comparaison
 
@@ -98,4 +99,8 @@ Les simulations d'un système TypeScript tournent dans le processus principal : 
 - **Histogramme de réels tous égaux** : la largeur de classe vaut 0 et la division donne `NaN`. Une seule classe est renvoyée dans ce cas.
 - **Sources `.ts` exécutées par Node** (ADR 0001) : Node refuse d'effacer les types d'un fichier situé sous `node_modules`. Les paquets du dépôt y sont des liens symboliques résolus vers leur vrai chemin : cela fonctionne, mais un système publié sur npm devra être compilé.
 - **`-n -5`** : `parseArgs` lit `-5` comme une option. Une valeur négative s'écrit `--iterations=-5` (elle est alors refusée avec un message clair).
+- **Annulation invisible pendant un lot synchrone** : sans pause, un système synchrone n'enchaîne que des microtâches ; le serveur ne voit ni l'abandon du navigateur ni l'occasion d'envoyer la progression. `simulateurQuiCede` rend la main toutes les 20 itérations.
+- **Fastify et les champs inconnus** : par défaut, un champ absent du schéma est retiré en silence au lieu d'être refusé.
+- **Espaces de `Intl` en français** : espace fine insécable (U+202F) pour les milliers, insécable (U+00A0) devant « % ». Les tests comparent le texte produit par les mêmes fonctions de format.
+- **ECharts pèse lourd** : même en n'important que les modules utilisés, l'interface fait ~800 Ko (265 Ko compressés). Acceptable pour un outil local.
 - **`pnpm simuler` sans `--silent`** ajoute l'en-tête de pnpm à la sortie : utiliser `pnpm --silent simuler …` pour rediriger le rapport dans un fichier.
