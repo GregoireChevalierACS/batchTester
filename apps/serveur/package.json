@@ -1,0 +1,20 @@
+{
+  "name": "@batchtester/serveur",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@batchtester/adapters": "workspace:*",
+    "@batchtester/core": "workspace:*",
+    "@batchtester/runner": "workspace:*",
+    "@fastify/static": "10.1.6",
+    "fastify": "5.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "vitest": "4.1.12"
+  }
+}
