@@ -1,0 +1,20 @@
+{
+  "name": "@batchtester/adapters",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@batchtester/core": "workspace:*",
+    "@batchtester/runner": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "4.1.12"
+  }
+}
