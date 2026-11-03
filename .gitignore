@@ -1,0 +1,31 @@
+# Dépendances
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+build/
+*.tsbuildinfo
+
+# Tests et rapports
+coverage/
+reports/
+.stryker-tmp/
+
+# Configuration locale et secrets (le modèle .env.example, lui, est versionné)
+.env
+.env.*
+!.env.example
+
+# Journaux
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Éditeurs et système
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db

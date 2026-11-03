@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Une nouvelle exécution sur la même branche annule la précédente, devenue obsolète.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verification:
+    # Ce nom est le check exigé par la protection de main : ne pas le renommer.
+    name: Vérification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Tout l'historique : nécessaire pour vérifier chaque commit de la PR.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Installation reproductible
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit des dépendances
+        run: pnpm audit --audit-level high
+
+      # Exception documentée : un bot ne connaît pas le numéro de commit du jour. L'exception repose
+      # sur l'auteur de la PR fourni par GitHub, pas sur le message, qui serait falsifiable.
+      - name: Format des commits
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        run: pnpm commits:check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Architecture
+        run: pnpm lint:architecture
+
+      - name: Formatage
+        run: pnpm format:check
+
+      - name: Types
+        run: pnpm typecheck
+
+      - name: Tests et couverture
+        run: pnpm test:coverage
+
+      # Critère de la phase 1 : la ligne de commande, lancée pour de vrai, donne deux fois le même
+      # rapport avec la même graine.
+      - name: Démonstration reproductible
+        run: |
+          pnpm --silent simuler systemes/combat/src/index.ts -n 200 -g 42 > premier.txt
+          pnpm --silent simuler systemes/combat/src/index.ts -n 200 -g 42 > second.txt
+          cat premier.txt
+          diff premier.txt second.txt
+
+      - name: Test de mutation
+        run: pnpm test:mutation
+
+      - name: Rapport de mutation
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: rapport-mutation
+          path: packages/core/reports/mutation/
+          if-no-files-found: ignore

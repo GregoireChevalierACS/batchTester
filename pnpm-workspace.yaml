@@ -1,0 +1,12 @@
+packages:
+  - packages/*
+  - apps/*
+  - systemes/*
+
+# Quarantaine : une version publiée depuis moins de 3 jours n'est pas installée. La plupart des
+# paquets compromis sont détectés et retirés du registre dans ce délai.
+minimumReleaseAge: 4320
+
+# Seuls ces paquets ont le droit d'exécuter un script d'installation. Tout autre script est bloqué.
+onlyBuiltDependencies:
+  - esbuild
