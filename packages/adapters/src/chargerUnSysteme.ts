@@ -47,3 +47,12 @@ export async function chargerUnSysteme(
       : undefined;
   return aLaFormeDUnSysteme(candidat) ? ok(candidat) : err({ kind: 'export-invalide', chemin });
 }
+
+export function expliquerUnProblemeDeChargement(probleme: ProblemeDeChargement): string {
+  switch (probleme.kind) {
+    case 'module-introuvable':
+      return `Impossible de charger « ${probleme.chemin} » : ${probleme.message}`;
+    case 'export-invalide':
+      return `« ${probleme.chemin} » n'exporte pas de système par défaut (definition et simuler).`;
+  }
+}

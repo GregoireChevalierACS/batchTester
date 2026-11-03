@@ -37,6 +37,7 @@ export {
 export { err, ok, type Result } from './Result.ts';
 export {
   agregerLesSeries,
+  convergence,
   frequences,
   histogramme,
   proportionDeWilson,
@@ -45,6 +46,7 @@ export {
   type Classe,
   type Frequence,
   type Histogramme,
+  type PointDeConvergence,
   type PointDeSerie,
   type Proportion,
   type Resume,

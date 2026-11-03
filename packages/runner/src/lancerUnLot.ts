@@ -36,6 +36,8 @@ export interface OptionsDeLot {
    */
   readonly simultanees?: number;
   readonly surProgression?: (faites: number, total: number) => void;
+  /** Interrompt le lot : plus aucune itération n'est entamée, et le lot rapporte son annulation. */
+  readonly signal?: AbortSignal;
 }
 
 export interface Iteration {
@@ -72,6 +74,7 @@ export type ProblemeDeLot =
   | { readonly kind: 'iterations-invalides'; readonly iterations: number }
   | { readonly kind: 'simultanees-invalides'; readonly simultanees: number }
   | { readonly kind: 'valeurs-invalides'; readonly erreurs: readonly ErreurDeValeur[] }
+  | { readonly kind: 'lot-annule' }
   | EchecDIteration;
 
 async function jouer(
@@ -124,7 +127,7 @@ export async function lancerUnLot(
   let arreter = false;
 
   const ouvrier = async (): Promise<EchecDIteration | null> => {
-    while (!arreter && suivante < total) {
+    while (!arreter && options.signal?.aborted !== true && suivante < total) {
       const index = suivante;
       suivante += 1;
       const issue = await jouer(simulateur, valeurs.value, demande.graine, index);
@@ -140,6 +143,8 @@ export async function lancerUnLot(
   };
 
   const issues = await Promise.all(Array.from({ length: Math.min(simultanees, total) }, ouvrier));
+  // Un lot interrompu est incomplet : ses statistiques ne veulent rien dire, même sans échec.
+  if (options.signal?.aborted === true) return err({ kind: 'lot-annule' });
   // Les itérations déjà lancées se terminent toutes : parmi leurs échecs, on rapporte celui de
   // plus petit index, pour qu'un même lot rapporte toujours le même échec.
   const [premierEchec] = issues.filter((issue) => issue !== null).sort((a, b) => a.index - b.index);

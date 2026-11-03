@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import { creerGraine, err, ok, type Graine, type Result } from '@batchtester/core';
-import { messageDErreur } from './messageDErreur.ts';
+import { messageDErreur } from '@batchtester/adapters';
 
 export const ITERATIONS_PAR_DEFAUT = 100;
 export const GRAINE_PAR_DEFAUT = 1;

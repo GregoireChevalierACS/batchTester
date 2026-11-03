@@ -1,7 +1,6 @@
-import { simulateurEnMemoire } from '@batchtester/adapters';
+import { chargerUnSysteme, simulateurEnMemoire } from '@batchtester/adapters';
 import { lancerUnLot, resumerLeLot } from '@batchtester/runner';
 import { AIDE, lireLesArguments } from './arguments.ts';
-import { chargerUnSysteme } from './chargerUnSysteme.ts';
 import { interpreterLesParametres } from './interpreterLesParametres.ts';
 import { expliquer } from './messages.ts';
 import { formaterLeRapport } from './rapport.ts';

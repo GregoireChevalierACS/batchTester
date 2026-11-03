@@ -168,6 +168,34 @@ export function frequences(
   });
 }
 
+export interface PointDeConvergence {
+  /** Nombre d'itérations prises en compte. */
+  readonly iterations: number;
+  readonly moyenne: number;
+}
+
+/**
+ * Moyenne des k premières valeurs, pour au plus `points` valeurs de k réparties régulièrement
+ * jusqu'à n (la dernière est toujours n). Une courbe encore agitée à droite dit que le lot est
+ * trop court pour conclure.
+ */
+export function convergence(
+  valeurs: readonly number[],
+  points: number,
+): readonly PointDeConvergence[] {
+  const nombre = Math.min(points, valeurs.length);
+  const jalons = new Set(
+    Array.from({ length: nombre }, (_, i) => Math.round(((i + 1) * valeurs.length) / nombre)),
+  );
+  const resultat: PointDeConvergence[] = [];
+  let somme = 0;
+  valeurs.forEach((v, i) => {
+    somme += v;
+    if (jalons.has(i + 1)) resultat.push({ iterations: i + 1, moyenne: somme / (i + 1) });
+  });
+  return resultat;
+}
+
 export interface PointDeSerie {
   readonly indice: number;
   /** Nombre d'itérations encore en cours à cet indice : les séries n'ont pas toutes la même longueur. */
