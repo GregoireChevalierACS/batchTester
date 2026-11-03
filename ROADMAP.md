@@ -14,7 +14,7 @@ Chaque système branché respecte un seul contrat :
 interface Systeme {
   definition: {
     parametres: DefParametre[]; // nombre (min, max, pas), entier, choix, booléen
-    mesures: DefMesure[];       // nombre, catégorie (ex. vainqueur), série par tour
+    mesures: DefMesure[]; // nombre, catégorie (ex. vainqueur), série par tour
   };
   simuler(params: Valeurs, rng: Aleatoire): Resultat; // une itération
 }
@@ -27,13 +27,14 @@ Deux adapters tiennent ce contrat :
 
 ## Découpage
 
-| Partie | Rôle |
-| --- | --- |
-| `packages/core` (domaine) | Générateur aléatoire à graine, schéma des paramètres, statistiques (moyenne, percentiles, histogrammes, intervalles de confiance) |
-| `packages/runner` (application) | Lancement d'un lot, balayage (1 paramètre ou grille de 2), comparaison A/B, parallélisme borné par workers |
-| `packages/adapters` | Système TypeScript, processus externe, stockage des lancements (SQLite intégré à Node), serveur local HTTP/WebSocket |
-| `apps/ui` | Vite + React : curseurs et champs texte générés depuis la définition, progression en direct, graphiques ECharts |
-| `systemes/` | Exemples qui prouvent la généricité : combat 1 contre 1, mini jeu de cartes |
+| Partie                          | Rôle                                                                                                                              |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/core` (domaine)       | Générateur aléatoire à graine, schéma des paramètres, statistiques (moyenne, percentiles, histogrammes, intervalles de confiance) |
+| `packages/runner` (application) | Lancement d'un lot, balayage (1 paramètre ou grille de 2), comparaison A/B, parallélisme borné par workers                        |
+| `packages/adapters`             | Système TypeScript, processus externe, stockage des lancements (SQLite intégré à Node), serveur local HTTP/WebSocket              |
+| `apps/cli`                      | Ligne de commande : lance un lot sur un système et affiche le rapport texte ou le résumé JSON                                     |
+| `apps/ui`                       | Vite + React : curseurs et champs texte générés depuis la définition, progression en direct, graphiques ECharts                   |
+| `systemes/`                     | Exemples qui prouvent la généricité : combat 1 contre 1, mini jeu de cartes                                                       |
 
 **Reproductibilité** : même graine maître et mêmes paramètres donnent exactement les mêmes résultats ; chaque itération reçoit une graine dérivée. Chaque lancement enregistré garde paramètres, graine, résultats et version du système.
 
@@ -49,18 +50,20 @@ Deux adapters tiennent ce contrat :
 - Grille de deux paramètres : carte de chaleur.
 - Séries par tour, si le système en émet : moyenne avec bande min-max.
 
-## Phase 1 — Socle
+## Phase 1 — Socle ✅
 
 **Terminée quand** : le noyau, le runner et l'adapter TypeScript passent la CI (100 % de couverture, mutation du domaine ≥ 80 %), et le système de combat d'exemple tourne en ligne de commande avec une graine fixe en donnant deux fois le même résultat.
 
-- [ ] Monorepo pnpm, TypeScript strict, ESLint, Vitest, Stryker, CI.
-- [ ] Domaine : générateur aléatoire à graine et graines dérivées.
-- [ ] Domaine : définition et validation des paramètres (bornes, pas, types).
-- [ ] Domaine : statistiques (moyenne, écart-type, percentiles, histogramme, intervalle de confiance d'une proportion).
-- [ ] Application : lancement d'un lot de N itérations, parallélisme borné.
-- [ ] Adapter système TypeScript, tenu par une suite de contrat.
-- [ ] Exemple : combat 1 contre 1.
-- [ ] Ligne de commande : lancer un lot et afficher un résumé.
+- [x] Monorepo pnpm, TypeScript strict, ESLint, dependency-cruiser, Vitest, Stryker, commitlint, CI.
+- [x] Domaine : générateur aléatoire à graine (sfc32) et graines dérivées, valeurs figées par les tests.
+- [x] Domaine : définition et validation des paramètres (bornes, pas, types) et des mesures.
+- [x] Domaine : statistiques (moyenne, écart-type, quantiles, histogramme, intervalle de Wilson, séries par tour).
+- [x] Application : lancement d'un lot de N itérations, nombre de simulations simultanées borné.
+- [x] Adapter système TypeScript, tenu par une suite de contrat.
+- [x] Exemple : combat 1 contre 1.
+- [x] Ligne de commande : lancer un lot et afficher un rapport texte ou un résumé JSON.
+
+Les simulations d'un système TypeScript tournent dans le processus principal : la limite de simultanéité sert aux simulateurs asynchrones. Des workers ne seront ajoutés que si une itération devient assez coûteuse pour le justifier (phase 4).
 
 ## Phase 2 — Interface
 
@@ -87,7 +90,12 @@ Deux adapters tiennent ce contrat :
 - [ ] Grille de deux paramètres (carte de chaleur).
 - [ ] Adapter processus externe (JSON ligne par ligne), tenu par la même suite de contrat.
 - [ ] Exemple : mini jeu de cartes.
+- [ ] Simulateur en workers (`worker_threads`), si une itération devient coûteuse.
 
 ## Pièges rencontrés
 
-Aucun pour l'instant.
+- **Arrondis flottants dans les statistiques** : `min + n × ((max - min) / n)` ne retombe pas toujours sur `max` (0,30000000000000004), et l'intervalle de Wilson peut sortir d'un cheveu de [p, p] en 0 et en 1. Les bornes sont recalées explicitement ; des tests par propriétés (fast-check) gardent ces cas.
+- **Histogramme de réels tous égaux** : la largeur de classe vaut 0 et la division donne `NaN`. Une seule classe est renvoyée dans ce cas.
+- **Sources `.ts` exécutées par Node** (ADR 0001) : Node refuse d'effacer les types d'un fichier situé sous `node_modules`. Les paquets du dépôt y sont des liens symboliques résolus vers leur vrai chemin : cela fonctionne, mais un système publié sur npm devra être compilé.
+- **`-n -5`** : `parseArgs` lit `-5` comme une option. Une valeur négative s'écrit `--iterations=-5` (elle est alors refusée avec un message clair).
+- **`pnpm simuler` sans `--silent`** ajoute l'en-tête de pnpm à la sortie : utiliser `pnpm --silent simuler …` pour rediriger le rapport dans un fichier.

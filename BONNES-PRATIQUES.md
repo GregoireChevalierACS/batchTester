@@ -33,14 +33,14 @@ Aucun secret ne doit vivre en clair, et aucune donnée externe ne doit être tra
 
 La CI fait foi : un changement n'est accepté que s'il passe des seuils chiffrés et automatiques.
 
-| Niveau | Ce qu'on vérifie | Seuil ou déclencheur |
-| --- | --- | --- |
-| Unitaire (domaine, application) | Chaque règle métier et chaque cas d'usage | 100 % de couverture en CI |
-| Mutation (domaine) | Que les tests détectent vraiment les erreurs, pas seulement qu'ils exécutent le code | Score ≥ 80 % |
-| Contrat (adapters) | Que chaque fournisseur respecte la même interface | Une seule suite rejouée sur tous les adapters |
-| Évaluation IA | Qualité des réponses d'un modèle sur un jeu de référence anonymisé (ex. 50 cas avec réponse attendue) | À chaque changement de consigne ou de modèle |
-| Lancement de l'artefact | L'exécutable empaqueté démarre réellement (ex. Playwright) | En CI, sur l'OS cible |
-| Essai réel | Usage par de vrais utilisateurs, sur de vraies données, dans chaque environnement visé | Chaque défaut corrigé ou noté |
+| Niveau                          | Ce qu'on vérifie                                                                                      | Seuil ou déclencheur                          |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Unitaire (domaine, application) | Chaque règle métier et chaque cas d'usage                                                             | 100 % de couverture en CI                     |
+| Mutation (domaine)              | Que les tests détectent vraiment les erreurs, pas seulement qu'ils exécutent le code                  | Score ≥ 80 %                                  |
+| Contrat (adapters)              | Que chaque fournisseur respecte la même interface                                                     | Une seule suite rejouée sur tous les adapters |
+| Évaluation IA                   | Qualité des réponses d'un modèle sur un jeu de référence anonymisé (ex. 50 cas avec réponse attendue) | À chaque changement de consigne ou de modèle  |
+| Lancement de l'artefact         | L'exécutable empaqueté démarre réellement (ex. Playwright)                                            | En CI, sur l'OS cible                         |
+| Essai réel                      | Usage par de vrais utilisateurs, sur de vraies données, dans chaque environnement visé                | Chaque défaut corrigé ou noté                 |
 
 - **Tester sur un vrai environnement ce que la documentation ne garantit pas** (un champ d'API, un comportement de tenant), et prévoir le repli dès le départ.
 - **Mesurer avant de choisir** : temps et coût d'une opération type, comparés entre réglages (par exemple niveau d'effort d'un modèle), plutôt que de supposer.
