@@ -1,0 +1,18 @@
+{
+  "name": "@batchtester/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@batchtester/adapters": "workspace:*",
+    "@batchtester/core": "workspace:*",
+    "@batchtester/runner": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "vitest": "4.1.12"
+  }
+}
