@@ -1,0 +1,8 @@
+{
+  // Fichiers TypeScript de la racine (configuration des outils). Chaque paquet a son propre tsconfig.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["*.ts"]
+}

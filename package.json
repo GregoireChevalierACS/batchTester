@@ -1,0 +1,39 @@
+{
+  "name": "batchtester",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "lint": "eslint . --max-warnings=0",
+    "lint:architecture": "depcruise packages apps systemes --config .dependency-cruiser.mjs",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "typecheck": "tsc -p tsconfig.json && pnpm -r --parallel typecheck",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "pnpm --filter @batchtester/core test:mutation",
+    "commits:check": "node scripts/verifier-commits.mjs",
+    "simuler": "node apps/cli/src/main.ts"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/types": "21.2.3",
+    "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "4.1.12",
+    "dependency-cruiser": "18.7.0",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "4.1.12"
+  }
+}

@@ -1,0 +1,9 @@
+# main n'évolue que par pull request : on refuse tout commit fait directement dessus.
+# (Le tout premier commit du dépôt, sans branche existante, reste possible.)
+branche=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ "$branche" = "main" ] && git rev-parse --verify --quiet HEAD >/dev/null; then
+  echo "✖ Commit direct sur main refusé : créer une branche (git switch -c feat/…) puis ouvrir une PR."
+  exit 1
+fi
+
+pnpm exec lint-staged
