@@ -2,7 +2,7 @@
 // ESLint (no-restricted-imports) ne voit qu'un fichier à la fois ; ici, on voit les cycles et les
 // dépendances transitives.
 
-const TESTS = '\\.test\\.ts$|/testing/';
+const TESTS = '\\.test\\.tsx?$|/testing/';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
@@ -31,6 +31,21 @@ export default {
       severity: 'error',
       from: { path: '^systemes/([^/]+)/src', pathNot: TESTS },
       to: { pathNot: ['^systemes/$1/src', '^packages/core/src'] },
+    },
+    {
+      name: 'interface-isolee',
+      comment:
+        "L'interface tourne dans le navigateur : ni module Node, ni adapters, ni serveur. Elle ne parle au serveur que par l'API HTTP.",
+      severity: 'error',
+      from: { path: '^apps/web/src', pathNot: TESTS },
+      to: {
+        path: [
+          '^node:',
+          '^(fs|path|os|crypto|child_process|http)$',
+          '^packages/adapters/',
+          '^apps/serveur/',
+        ],
+      },
     },
     {
       name: 'api-publique-seulement',
@@ -78,13 +93,13 @@ export default {
       from: {
         orphan: true,
         pathNot: [
-          '\\.test\\.ts$',
+          '\\.test\\.tsx?$',
           '\\.config\\.(ts|mjs)$',
           '/index\\.ts$',
           '\\.d\\.ts$',
-          '/main\\.ts$',
+          '/main\\.tsx?$',
           // Modules chargés dynamiquement par les tests de la ligne de commande.
-          '^apps/cli/fixtures/',
+          '^packages/adapters/fixtures/',
         ],
       },
       to: {},

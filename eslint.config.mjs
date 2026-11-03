@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import comments from '@eslint-community/eslint-plugin-eslint-comments/configs';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 // Ce que le noyau n'a pas le droit d'importer. dependency-cruiser vérifie le graphe complet en CI ;
@@ -74,6 +75,31 @@ export default tseslint.config(
     ignores: ['**/*.test.ts'],
     rules: {
       'no-restricted-syntax': ['error', ...SOURCES_DE_NON_DETERMINISME],
+    },
+  },
+  {
+    // Interface : règles des hooks React, et aucun accès à Node ni au code qui en dépend.
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    extends: [reactHooks.configs.flat.recommended],
+    languageOptions: { globals: globals.browser },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                'node:*',
+                '@batchtester/adapters',
+                '@batchtester/serveur',
+                '**/apps/serveur/**',
+              ],
+              message:
+                "L'interface tourne dans le navigateur : elle ne parle au serveur que par l'API.",
+            },
+          ],
+        },
+      ],
     },
   },
   {

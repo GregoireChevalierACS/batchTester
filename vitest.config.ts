@@ -9,15 +9,20 @@ export default defineConfig({
     passWithNoTests: true,
     coverage: {
       provider: 'v8',
-      include: ['packages/*/src/**/*.ts', 'apps/*/src/**/*.ts', 'systemes/*/src/**/*.ts'],
+      include: ['packages/*/src/**/*.ts', 'apps/*/src/**/*.{ts,tsx}', 'systemes/*/src/**/*.ts'],
       // Points d'entrée : ils ne font que réexporter ou brancher des modules déjà testés. La ligne
-      // de commande est en plus lancée pour de vrai en CI (étape « Démonstration reproductible »).
+      // de commande est en plus lancée pour de vrai en CI (étape « Démonstration reproductible »),
+      // et l'interface y est construite. echarts.ts ne fait qu'enregistrer des modules d'ECharts,
+      // remplacé par une doublure dans les tests (jsdom ne dessine pas).
       exclude: [
-        '**/*.test.ts',
+        '**/*.test.{ts,tsx}',
         '**/index.ts',
         '**/testing/**',
         '**/*.d.ts',
         'apps/cli/src/main.ts',
+        'apps/serveur/src/main.ts',
+        'apps/web/src/main.tsx',
+        'apps/web/src/echarts.ts',
       ],
       reporter: ['text', 'html'],
       reportsDirectory: 'coverage',
@@ -27,6 +32,9 @@ export default defineConfig({
         'packages/runner/src/**': TOUT,
         'packages/adapters/src/**': TOUT,
         'apps/cli/src/**': TOUT,
+        'apps/serveur/src/**': TOUT,
+        // L'interface est testée par ses comportements (Testing Library).
+        'apps/web/src/**': TOUT,
         'systemes/*/src/**': TOUT,
       },
     },

@@ -17,7 +17,11 @@
     "test:coverage": "vitest run --coverage",
     "test:mutation": "pnpm --filter @batchtester/core test:mutation",
     "commits:check": "node scripts/verifier-commits.mjs",
-    "simuler": "node apps/cli/src/main.ts"
+    "simuler": "node apps/cli/src/main.ts",
+    "build": "pnpm --filter @batchtester/web build",
+    "serveur": "node apps/serveur/src/main.ts",
+    "studio": "pnpm build && node apps/serveur/src/main.ts",
+    "dev:web": "pnpm --filter @batchtester/web dev"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
@@ -28,6 +32,7 @@
     "@vitest/coverage-v8": "4.1.12",
     "dependency-cruiser": "18.7.0",
     "eslint": "10.13.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
     "husky": "9.1.7",
     "lint-staged": "17.6.0",
