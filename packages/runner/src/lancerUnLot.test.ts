@@ -146,6 +146,35 @@ describe('refus avant de lancer', () => {
   });
 });
 
+describe('annulation', () => {
+  it("n'entame plus d'itération une fois le signal levé, et rapporte l'annulation", async () => {
+    const controleur = new AbortController();
+    const simulateur = new SimulateurScripte(resultatDeTest);
+    const lot = await lancerUnLot(simulateur, DEMANDE, {
+      simultanees: 1,
+      signal: controleur.signal,
+      surProgression: (faites) => {
+        if (faites === 4) controleur.abort();
+      },
+    });
+    expect(lot).toEqual({ ok: false, error: { kind: 'lot-annule' } });
+    expect(simulateur.appels).toHaveLength(4);
+  });
+
+  it('ne lance rien avec un signal déjà levé', async () => {
+    const simulateur = new SimulateurScripte(resultatDeTest);
+    const lot = await lancerUnLot(simulateur, DEMANDE, { signal: AbortSignal.abort() });
+    expect(lot).toEqual({ ok: false, error: { kind: 'lot-annule' } });
+    expect(simulateur.appels).toHaveLength(0);
+  });
+
+  it('termine normalement avec un signal jamais levé', async () => {
+    const simulateur = new SimulateurScripte(resultatDeTest);
+    const lot = await lancerUnLot(simulateur, DEMANDE, { signal: new AbortController().signal });
+    expect(lot.ok).toBe(true);
+  });
+});
+
 describe("échec d'une itération", () => {
   const grainesEnEchec = new Set([5, 9].map((i) => deriverLaGraine(graine(42), i)));
 

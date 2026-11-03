@@ -1,0 +1,1 @@
+Fichier à la racine : ignoré par la découverte.

@@ -78,18 +78,21 @@ const RESUME: ResumeDeLot = {
       kind: 'categorie',
       mesure: VAINQUEUR,
       frequences: frequences(['A', 'A', 'B', 'A'], ['A', 'B', 'nul']),
+      convergence: [],
     },
     {
       kind: 'nombre',
       mesure: TOURS,
       resume: resumer([3, 5, 5, 4]),
       histogramme: histogramme([3, 5, 5, 4]),
+      convergence: [],
     },
     {
       kind: 'nombre',
       mesure: ECART,
       resume: resumer([-12.5, 40, 3.25, 0]),
       histogramme: histogramme([-12.5, 40, 3.25, 0]),
+      convergence: [],
     },
     {
       kind: 'serie',
@@ -148,8 +151,14 @@ describe('rapport texte', () => {
       ...RESUME,
       definition: { ...DEFINITION, parametres: [] },
       mesures: [
-        { kind: 'categorie', mesure: VAINQUEUR, frequences: [] },
-        { kind: 'nombre', mesure: TOURS, resume: null, histogramme: histogramme([]) },
+        { kind: 'categorie', mesure: VAINQUEUR, frequences: [], convergence: [] },
+        {
+          kind: 'nombre',
+          mesure: TOURS,
+          resume: null,
+          histogramme: histogramme([]),
+          convergence: [],
+        },
         { kind: 'serie', mesure: PV, points: [] },
       ],
     };

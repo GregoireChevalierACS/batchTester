@@ -1,3 +1,4 @@
+export type { DemandeDeLotADistance, EvenementDeLot } from './evenements.ts';
 export {
   ITERATIONS_MAXIMALES,
   lancerUnLot,
@@ -9,5 +10,12 @@ export {
   type OptionsDeLot,
   type ProblemeDeLot,
 } from './lancerUnLot.ts';
+export { expliquerUnProblemeDeLot } from './messages.ts';
 export type { Simulateur } from './ports.ts';
-export { resumerLeLot, type ResumeDeLot, type ResumeDeMesure } from './resumerLeLot.ts';
+export {
+  POINTS_DE_CONVERGENCE,
+  resumerLeLot,
+  type ConvergenceDeCategorie,
+  type ResumeDeLot,
+  type ResumeDeMesure,
+} from './resumerLeLot.ts';

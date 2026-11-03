@@ -1,6 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { aLaFormeDUnSysteme, chargerUnSysteme } from './chargerUnSysteme.ts';
+import {
+  aLaFormeDUnSysteme,
+  chargerUnSysteme,
+  expliquerUnProblemeDeChargement,
+} from './chargerUnSysteme.ts';
 
 describe("forme d'un système", () => {
   const definition = { nom: 'S', version: '1', parametres: [], mesures: [] };
@@ -68,5 +72,20 @@ describe('charger un système', () => {
   it('laisse au runner le détail de la définition', async () => {
     const charge = await chargerUnSysteme('definitionInvalide.ts', FIXTURES);
     expect(charge.ok && charge.value.definition.version).toBe('');
+  });
+});
+
+describe('expliquer un problème de chargement', () => {
+  it('cite le chemin et la cause', () => {
+    expect(
+      expliquerUnProblemeDeChargement({
+        kind: 'module-introuvable',
+        chemin: 'x.ts',
+        message: 'Cannot find module',
+      }),
+    ).toBe('Impossible de charger « x.ts » : Cannot find module');
+    expect(expliquerUnProblemeDeChargement({ kind: 'export-invalide', chemin: 'x.ts' })).toBe(
+      "« x.ts » n'exporte pas de système par défaut (definition et simuler).",
+    );
   });
 });

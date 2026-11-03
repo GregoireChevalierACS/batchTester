@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   agregerLesSeries,
   CLASSES_DISCRETES_MAXIMALES,
+  convergence,
   frequences,
   histogramme,
   nombreDeClassesDeSturges,
@@ -215,6 +216,51 @@ describe('frequences', () => {
 
   it("n'a rien à dire d'une série vide", () => {
     expect(frequences([], ['A'])).toEqual([]);
+  });
+});
+
+describe('convergence', () => {
+  it('donne la moyenne cumulée à chaque itération quand les points suffisent', () => {
+    expect(convergence([4, 2, 6, 0], 10)).toEqual([
+      { iterations: 1, moyenne: 4 },
+      { iterations: 2, moyenne: 3 },
+      { iterations: 3, moyenne: 4 },
+      { iterations: 4, moyenne: 3 },
+    ]);
+  });
+
+  it('répartit régulièrement les points et finit toujours sur la dernière itération', () => {
+    const valeurs = Array.from({ length: 10 }, (_, i) => i + 1);
+    expect(convergence(valeurs, 4)).toEqual([
+      { iterations: 3, moyenne: 2 },
+      { iterations: 5, moyenne: 3 },
+      { iterations: 8, moyenne: 4.5 },
+      { iterations: 10, moyenne: 5.5 },
+    ]);
+  });
+
+  it("n'a aucun point sans valeur ou sans point demandé", () => {
+    expect(convergence([], 10)).toEqual([]);
+    expect(convergence([1, 2], 0)).toEqual([]);
+  });
+
+  it('donne au plus le nombre de points demandé, la moyenne finale en dernier', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.integer({ min: -100, max: 100 }), { minLength: 1, maxLength: 500 }),
+        fc.integer({ min: 1, max: 50 }),
+        (valeurs, points) => {
+          const courbe = convergence(valeurs, points);
+          const derniere = courbe.at(-1);
+          const moyenne = valeurs.reduce((s, v) => s + v, 0) / valeurs.length;
+          return (
+            courbe.length === Math.min(points, valeurs.length) &&
+            derniere?.iterations === valeurs.length &&
+            Math.abs(derniere.moyenne - moyenne) < 1e-9
+          );
+        },
+      ),
+    );
   });
 });
 

@@ -69,10 +69,10 @@ describe('ligne de commande', () => {
   });
 
   it('explique un système impossible à charger', async () => {
-    const { code, erreurs } = await lancer('apps/cli/fixtures/pasUnSysteme.ts');
+    const { code, erreurs } = await lancer('packages/adapters/fixtures/pasUnSysteme.ts');
     expect(code).toBe(SORTIE_ECHEC);
     expect(erreurs).toBe(
-      "« apps/cli/fixtures/pasUnSysteme.ts » n'exporte pas de système par défaut (definition et simuler).\n",
+      "« packages/adapters/fixtures/pasUnSysteme.ts » n'exporte pas de système par défaut (definition et simuler).\n",
     );
   });
 

@@ -1,0 +1,1 @@
+Dossier sans src/index.ts : ignoré par la découverte.

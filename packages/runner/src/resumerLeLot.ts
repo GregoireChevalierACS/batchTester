@@ -1,5 +1,6 @@
 import {
   agregerLesSeries,
+  convergence,
   frequences,
   histogramme,
   resumer,
@@ -11,11 +12,21 @@ import {
   type Frequence,
   type Graine,
   type Histogramme,
+  type PointDeConvergence,
   type PointDeSerie,
   type Resume,
   type Valeurs,
 } from '@batchtester/core';
 import type { Lot } from './lancerUnLot.ts';
+
+/** Points de chaque courbe de convergence : assez pour voir la tendance, pas plus. */
+export const POINTS_DE_CONVERGENCE = 100;
+
+export interface ConvergenceDeCategorie {
+  readonly categorie: string;
+  /** Proportion de la catégorie parmi les k premières itérations. */
+  readonly points: readonly PointDeConvergence[];
+}
 
 export type ResumeDeMesure =
   | {
@@ -23,11 +34,13 @@ export type ResumeDeMesure =
       readonly mesure: DefMesureNombre;
       readonly resume: Resume | null;
       readonly histogramme: Histogramme;
+      readonly convergence: readonly PointDeConvergence[];
     }
   | {
       readonly kind: 'categorie';
       readonly mesure: DefMesureCategorie;
       readonly frequences: readonly Frequence[];
+      readonly convergence: readonly ConvergenceDeCategorie[];
     }
   | {
       readonly kind: 'serie';
@@ -57,11 +70,23 @@ export function resumerLeLot(lot: Lot): ResumeDeLot {
           mesure,
           resume: resumer(nombres),
           histogramme: histogramme(nombres),
+          convergence: convergence(nombres, POINTS_DE_CONVERGENCE),
         };
       }
       case 'categorie': {
         const categories = valeursDe(mesure).filter((v) => typeof v === 'string');
-        return { kind: 'categorie', mesure, frequences: frequences(categories, mesure.categories) };
+        return {
+          kind: 'categorie',
+          mesure,
+          frequences: frequences(categories, mesure.categories),
+          convergence: mesure.categories.map((categorie) => ({
+            categorie,
+            points: convergence(
+              categories.map((v) => (v === categorie ? 1 : 0)),
+              POINTS_DE_CONVERGENCE,
+            ),
+          })),
+        };
       }
       case 'serie': {
         const series = valeursDe(mesure).filter((v) => typeof v === 'object');
