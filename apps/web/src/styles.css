@@ -396,3 +396,42 @@ button {
   margin: 6px 0 0;
   font-size: 0.9rem;
 }
+
+/* Balayage */
+
+.balayage form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.balayage .axes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.balayage select {
+  max-width: 100%;
+}
+
+.champs-d-axe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.champs-d-axe .champ {
+  display: grid;
+  gap: 2px;
+}
+
+.balayage input[type='number'] {
+  width: 8em;
+  font-variant-numeric: tabular-nums;
+}
+
+.balayage .erreurs {
+  margin: 0;
+  color: var(--alerte);
+}

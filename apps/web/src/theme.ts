@@ -13,6 +13,8 @@ export interface Theme {
   readonly grille: string;
   readonly axe: string;
   readonly series: readonly string[];
+  /** Du plus faible au plus fort : une seule teinte, la valeur faible se fond dans la surface. */
+  readonly sequentielle: readonly string[];
 }
 
 export const CLAIR: Theme = {
@@ -23,6 +25,7 @@ export const CLAIR: Theme = {
   grille: '#e1e0d9',
   axe: '#c3c2b7',
   series: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'],
+  sequentielle: ['#cde2fb', '#86b6ef', '#3987e5', '#1c5cab', '#0d366b'],
 };
 
 export const SOMBRE: Theme = {
@@ -33,6 +36,7 @@ export const SOMBRE: Theme = {
   grille: '#2c2c2a',
   axe: '#383835',
   series: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
+  sequentielle: ['#0d366b', '#1c5cab', '#3987e5', '#86b6ef', '#cde2fb'],
 };
 
 /** Au-delà, des courbes de catégories se confondraient : elles restent dans le tableau. */

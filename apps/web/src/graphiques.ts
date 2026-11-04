@@ -18,7 +18,7 @@ import { COULEURS_DE_SERIE, type Theme } from './theme.ts';
 
 const POLICE = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 
-const echapper = (texte: string): string =>
+export const echapper = (texte: string): string =>
   texte.replace(/[&<>"']/g, (c) => `&#${String(c.charCodeAt(0))};`);
 
 interface Marque {
@@ -45,7 +45,7 @@ export const enPourcentage = (valeur: unknown): string => formaterPourcentage(Nu
 
 export const enNombre = (valeur: unknown): string => formaterNombre(Number(valeur));
 
-function base(theme: Theme): EChartsOption {
+export function base(theme: Theme): EChartsOption {
   return {
     backgroundColor: 'transparent',
     animationDuration: 200,
@@ -53,20 +53,20 @@ function base(theme: Theme): EChartsOption {
   };
 }
 
-const infobulle = (theme: Theme) => ({
+export const infobulle = (theme: Theme) => ({
   backgroundColor: theme.surface,
   borderColor: theme.axe,
   textStyle: { color: theme.encre, fontFamily: POLICE },
 });
 
-const axeDeValeurs = (theme: Theme) => ({
+export const axeDeValeurs = (theme: Theme) => ({
   type: 'value' as const,
   axisLine: { show: false },
   axisLabel: { color: theme.discret },
   splitLine: { lineStyle: { color: theme.grille } },
 });
 
-const axeDeCategories = (theme: Theme, donnees: readonly string[]) => ({
+export const axeDeCategories = (theme: Theme, donnees: readonly string[]) => ({
   type: 'category' as const,
   data: [...donnees],
   axisLine: { lineStyle: { color: theme.axe } },
@@ -75,7 +75,7 @@ const axeDeCategories = (theme: Theme, donnees: readonly string[]) => ({
 });
 
 /** Nom d'axe centré sous l'axe : au bout, il serait coupé par le bord du graphique. */
-const nomDAxe = (theme: Theme, nom: string) => ({
+export const nomDAxe = (theme: Theme, nom: string) => ({
   name: nom,
   nameLocation: 'middle' as const,
   nameGap: 26,
@@ -90,8 +90,8 @@ const axeDesIterations = (theme: Theme) => ({
   max: 'dataMax' as const,
 });
 
-const GRILLE = { left: 8, right: 16, top: 16, bottom: 24, containLabel: true };
-const GRILLE_AVEC_NOM_D_AXE = { ...GRILLE, bottom: 36 };
+export const GRILLE = { left: 8, right: 16, top: 16, bottom: 24, containLabel: true };
+export const GRILLE_AVEC_NOM_D_AXE = { ...GRILLE, bottom: 36 };
 
 // --- Taux par catégorie : un point et son intervalle de confiance à 95 % --------------------
 

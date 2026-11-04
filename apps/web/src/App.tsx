@@ -2,6 +2,7 @@ import { elementA, GRAINE_MAXIMALE } from '@batchtester/core';
 import type { Lancement, ResumeDeLot } from '@batchtester/runner';
 import { useEffect, useId, useState } from 'react';
 import type { Api, SystemeDisponible } from './api.ts';
+import { Balayage } from './composants/Balayage.tsx';
 import { CarteDeMesure } from './composants/CarteDeMesure.tsx';
 import { Comparaison } from './composants/Comparaison.tsx';
 import { Formulaire, reglagesParDefaut } from './composants/Formulaire.tsx';
@@ -47,7 +48,7 @@ export function App({
   const [systemes, setSystemes] = useState<readonly SystemeDisponible[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [choix, setChoix] = useState<Choix | null>(null);
-  const [vue, setVue] = useState<'lot' | 'comparaison'>('lot');
+  const [vue, setVue] = useState<'lot' | 'comparaison' | 'balayage'>('lot');
   const [selection, setSelection] = useState<readonly number[]>([]);
   /** Lancement rechargé : le prochain résumé des mêmes réglages doit lui être identique. */
   const [reference, setReference] = useState<Lancement | null>(null);
@@ -192,8 +193,26 @@ export function App({
             >
               Comparer A et B
             </button>
+            <button
+              type="button"
+              aria-pressed={vue === 'balayage'}
+              onClick={() => {
+                setVue('balayage');
+              }}
+            >
+              Balayage
+            </button>
           </div>
-          {vue === 'comparaison' && selection.length === 2 ? (
+          {/* Toujours monté : un balayage en cours ou terminé survit au changement d'onglet. */}
+          <div hidden={vue !== 'balayage'}>
+            <Balayage
+              key={choix.systeme.id}
+              api={api}
+              systeme={choix.systeme}
+              reglages={choix.reglages}
+            />
+          </div>
+          {vue === 'balayage' ? null : vue === 'comparaison' && selection.length === 2 ? (
             <Comparaison
               key={selection.join('-')}
               api={api}

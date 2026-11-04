@@ -168,3 +168,29 @@ describe('historique', () => {
     await expect(api.supprimer(9)).rejects.toThrow('Lancement n° 9 introuvable.');
   });
 });
+
+describe('balayer', () => {
+  it('envoie la demande de balayage et transmet les événements du flux', async () => {
+    const lignes = [
+      { type: 'progression', faites: 1, total: 4 },
+      { type: 'resume', resume: {} },
+      { type: 'balayage', balayage: { points: [] } },
+    ];
+    const { chercher, demandes } = fauxFetch(
+      () => new Response(flux(lignes.map((l) => JSON.stringify(l)).join('\n'))),
+    );
+    const evenements: unknown[] = [];
+    const demande = { ...DEMANDE, axes: [{ parametre: 'pvA', valeurs: [1, 2] }] };
+    await creerLApi(chercher).balayer(
+      demande,
+      (e) => evenements.push(e),
+      new AbortController().signal,
+    );
+    // Un « resume » n'appartient pas au flux d'un balayage : il est ignoré.
+    expect(evenements).toEqual([lignes[0], lignes[2]]);
+    expect(demandes[0]).toMatchObject({
+      url: '/api/balayages',
+      init: { body: JSON.stringify(demande) },
+    });
+  });
+});
