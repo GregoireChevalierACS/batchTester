@@ -89,8 +89,9 @@ Les distributions ne sont pas superposées : leurs classes diffèrent d'un lot �
 
 **Terminée quand** : un balayage sur une grille de deux paramètres produit sa carte de chaleur, et un système écrit hors TypeScript tourne par l'adapter externe.
 
-- [ ] Balayage d'un paramètre (courbe avec bande d'incertitude).
-- [ ] Grille de deux paramètres (carte de chaleur).
+- [x] Mutation étendue au runner (100 %), en plus du noyau.
+- [x] Balayage d'un paramètre : l'indicateur choisi (moyenne d'une mesure ou taux d'une catégorie) selon la valeur, courbe et bande de l'intervalle à 95 %.
+- [x] Grille de deux paramètres : carte de chaleur à une seule teinte, bornes de l'échelle écrites. Choix et booléens balayés sur toutes leurs valeurs.
 - [ ] Adapter processus externe (JSON ligne par ligne), tenu par la même suite de contrat.
 - [ ] Exemple : mini jeu de cartes.
 - [ ] Simulateur en workers (`worker_threads`), si une itération devient coûteuse.
@@ -107,4 +108,6 @@ Les distributions ne sont pas superposées : leurs classes diffèrent d'un lot �
 - **ECharts pèse lourd** : même en n'important que les modules utilisés, l'interface fait ~800 Ko (265 Ko compressés). Acceptable pour un outil local.
 - **Accents dans `curl` sous Windows** : un JSON passé en argument part dans l'encodage de la console, et « défaut » arrive abîmé. Envoyer le corps depuis un fichier UTF-8 (`--data-binary @fichier.json`).
 - **Séries par tour en fin de combat** : les derniers tours ne comptent que les combats encore en cours, si bien que leur moyenne peut remonter. Le nombre d'itérations par tour est dans le tableau de chaque série.
+- **Ajv en mode strict et types multiples** : `type: ['number', 'string']` déclenche un avertissement au démarrage de Fastify. Écrire `anyOf`.
+- **`??` compte comme une branche** pour la couverture V8 : un repli « au cas où » jamais atteint fait échouer le seuil de 100 %. Mieux vaut écrire le code sans repli impossible (index cherché puis `elementA`) que de le contourner.
 - **`pnpm simuler` sans `--silent`** ajoute l'en-tête de pnpm à la sortie : utiliser `pnpm --silent simuler …` pour rediriger le rapport dans un fichier.

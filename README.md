@@ -31,6 +31,10 @@ En développement : `pnpm serveur` dans un terminal, `pnpm dev:web` dans un autr
 - **Recharger** remet les réglages et relance le lot : l'interface confirme que le résultat est identique à l'enregistrement, ou signale que le système a changé depuis.
 - **Cocher deux lancements** puis « Comparer A et B » : réglages côte à côte, puis pour chaque mesure les valeurs de A et B et l'écart B − A avec son intervalle de confiance à 95 %, et s'il est significatif.
 
+### Balayages
+
+L'onglet « Balayage » fait varier un paramètre (de, à, nombre de points), ou deux en grille ; tous les autres restent aux réglages du lot en cours. Chaque point est un lot complet qui rejoue la même graine : les écarts entre points viennent des réglages, pas du hasard. On choisit ensuite l'indicateur affiché : moyenne d'une mesure ou taux d'une catégorie, avec son intervalle de confiance à 95 % (courbe et bande pour un paramètre, carte de chaleur pour deux).
+
 ## Brancher un système
 
 Un système est un module dont l'export par défaut décrit ses paramètres et ses mesures, et joue une itération. Tout le hasard passe par `aleatoire` :
@@ -55,14 +59,14 @@ Paramètres : `nombre` (min, max, pas), `entier`, `choix`, `booleen`. Mesures : 
 
 ## Vérifications
 
-| Commande                 | Vérifie                                                 |
-| ------------------------ | ------------------------------------------------------- |
-| `pnpm lint`              | ESLint strict, sans avertissement                       |
-| `pnpm lint:architecture` | Dépendances entre couches (dependency-cruiser)          |
-| `pnpm typecheck`         | Types de tous les paquets                               |
-| `pnpm test:coverage`     | Tests, 100 % de couverture exigés                       |
-| `pnpm test:mutation`     | Test de mutation du noyau (Stryker), score minimal 80 % |
-| `pnpm format:check`      | Formatage Prettier                                      |
+| Commande                 | Vérifie                                                              |
+| ------------------------ | -------------------------------------------------------------------- |
+| `pnpm lint`              | ESLint strict, sans avertissement                                    |
+| `pnpm lint:architecture` | Dépendances entre couches (dependency-cruiser)                       |
+| `pnpm typecheck`         | Types de tous les paquets                                            |
+| `pnpm test:coverage`     | Tests, 100 % de couverture exigés                                    |
+| `pnpm test:mutation`     | Test de mutation du noyau et du runner (Stryker), score minimal 80 % |
+| `pnpm format:check`      | Formatage Prettier                                                   |
 
 Les commits suivent le format `aaaa-mm-jj # N : (type) description`, vérifié par commitlint. `main` n'évolue que par pull request, avec le check « Vérification » de la CI.
 
