@@ -79,5 +79,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: rapport-mutation
-          path: packages/core/reports/mutation/
+          path: |
+            packages/core/reports/mutation/
+            packages/runner/reports/mutation/
           if-no-files-found: ignore
