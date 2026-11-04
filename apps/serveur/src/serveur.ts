@@ -7,16 +7,20 @@ import {
 import { creerGraine, err, ok, type Graine, type Result, type Systeme } from '@batchtester/core';
 import {
   apercuDe,
+  expliquerUnProblemeDeBalayage,
   expliquerUnProblemeDeLot,
+  lancerUnBalayage,
   lancerUnLot,
   nomParDefaut,
   resumerLeLot,
+  type DemandeDeBalayageADistance,
   type DemandeDeLotADistance,
+  type EvenementDeBalayage,
   type EvenementDeLot,
   type Historique,
   type OptionsDeLot,
 } from '@batchtester/runner';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 
 export interface OptionsDuServeur {
   readonly systemes: readonly SystemeDecouvert[];
@@ -25,8 +29,36 @@ export interface OptionsDuServeur {
   readonly dossierWeb?: string;
 }
 
-/** Au plus une centaine de progressions par lot : assez pour une barre fluide. */
+/** Au plus une centaine de progressions par lot ou balayage : assez pour une barre fluide. */
 export const PROGRESSIONS_PAR_LOT = 100;
+
+/**
+ * Ouvre une réponse en flux NDJSON (ADR 0002) : Fastify n'y touche plus, et le signal se lève
+ * dès que le navigateur abandonne la demande, ce qui arrête le calcul en cours.
+ */
+function ouvrirUnFlux(reponse: FastifyReply) {
+  reponse.hijack();
+  const flux = reponse.raw;
+  const annulation = new AbortController();
+  flux.on('close', () => {
+    annulation.abort();
+  });
+  flux.writeHead(200, {
+    'content-type': 'application/x-ndjson; charset=utf-8',
+    'cache-control': 'no-store',
+  });
+  const ecrire = (evenement: EvenementDeLot | EvenementDeBalayage) =>
+    flux.write(`${JSON.stringify(evenement)}\n`);
+  return {
+    signal: annulation.signal,
+    ecrire,
+    surProgression: (faites: number, total: number) => {
+      const pas = Math.max(1, Math.ceil(total / PROGRESSIONS_PAR_LOT));
+      if (faites % pas === 0 || faites === total) ecrire({ type: 'progression', faites, total });
+    },
+    fermer: () => flux.end(),
+  };
+}
 
 // Les bornes fines (graine sur 32 bits, nombre d'itérations, valeurs des paramètres) sont
 // vérifiées par le noyau et le runner, qui expliquent chaque refus.
@@ -46,6 +78,28 @@ const SCHEMA_DE_DEMANDE = {
 const SCHEMA_D_ENREGISTREMENT = {
   ...SCHEMA_DE_DEMANDE,
   properties: { ...PROPRIETES_D_UNE_DEMANDE, nom: { type: 'string' } },
+} as const;
+
+const SCHEMA_DE_BALAYAGE = {
+  type: 'object',
+  required: ['systeme', 'graine', 'iterations', 'surcharges', 'axes'],
+  properties: {
+    ...PROPRIETES_D_UNE_DEMANDE,
+    axes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['parametre', 'valeurs'],
+        properties: {
+          parametre: { type: 'string' },
+          valeurs: {
+            type: 'array',
+            items: { anyOf: [{ type: 'number' }, { type: 'string' }, { type: 'boolean' }] },
+          },
+        },
+      },
+    },
+  },
 } as const;
 
 const SCHEMA_D_IDENTIFIANT = {
@@ -105,34 +159,41 @@ export function creerLeServeur({
       if (!prepare.ok)
         return reponse.code(prepare.error.code).send({ message: prepare.error.message });
 
-      // La réponse part au fil du lot : Fastify n'y touche plus.
-      reponse.hijack();
-      const flux = reponse.raw;
-      // Le navigateur abandonne la demande quand un réglage change : le lot s'arrête aussitôt.
-      const annulation = new AbortController();
-      flux.on('close', () => {
-        annulation.abort();
-      });
-      flux.writeHead(200, {
-        'content-type': 'application/x-ndjson; charset=utf-8',
-        'cache-control': 'no-store',
-      });
-      const ecrire = (evenement: EvenementDeLot) => flux.write(`${JSON.stringify(evenement)}\n`);
-
-      const pas = Math.max(1, Math.ceil(requete.body.iterations / PROGRESSIONS_PAR_LOT));
+      const { signal, ecrire, surProgression, fermer } = ouvrirUnFlux(reponse);
       const lot = await jouer(prepare.value.systeme, prepare.value.graine, requete.body, {
-        signal: annulation.signal,
-        surProgression: (faites, total) => {
-          if (faites % pas === 0 || faites === total)
-            ecrire({ type: 'progression', faites, total });
-        },
+        signal,
+        surProgression,
       });
       if (lot.ok) ecrire({ type: 'resume', resume: resumerLeLot(lot.value) });
       // Annulé : personne n'écoute plus, il n'y a rien à écrire.
       else if (lot.error.kind !== 'lot-annule') {
         ecrire({ type: 'probleme', message: expliquerUnProblemeDeLot(lot.error) });
       }
-      flux.end();
+      fermer();
+      return reponse;
+    },
+  );
+
+  app.post<{ Body: DemandeDeBalayageADistance }>(
+    '/api/balayages',
+    { schema: { body: SCHEMA_DE_BALAYAGE } },
+    async (requete, reponse) => {
+      const prepare = preparer(requete.body);
+      if (!prepare.ok)
+        return reponse.code(prepare.error.code).send({ message: prepare.error.message });
+
+      const { signal, ecrire, surProgression, fermer } = ouvrirUnFlux(reponse);
+      const { surcharges, iterations, axes } = requete.body;
+      const balayage = await lancerUnBalayage(
+        simulateurQuiCede(simulateurEnMemoire(prepare.value.systeme)),
+        { surcharges, graine: prepare.value.graine, iterations, axes },
+        { signal, surProgression },
+      );
+      if (balayage.ok) ecrire({ type: 'balayage', balayage: balayage.value });
+      else if (balayage.error.kind !== 'balayage-annule') {
+        ecrire({ type: 'probleme', message: expliquerUnProblemeDeBalayage(balayage.error) });
+      }
+      fermer();
       return reponse;
     },
   );
