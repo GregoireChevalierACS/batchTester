@@ -75,13 +75,15 @@ Les simulations d'un système TypeScript tournent dans le processus principal : 
 - [x] Graphiques : taux par catégorie avec intervalle de confiance, distribution, convergence, séries par tour, chacun avec son tableau de données.
 - [x] Choix du système parmi ceux du dossier `systemes/`, découverts au démarrage.
 
-## Phase 3 — Historique et comparaison
+## Phase 3 — Historique et comparaison ✅
 
 **Terminée quand** : deux lancements enregistrés s'affichent côte à côte avec leur écart, et un lancement relancé depuis l'historique redonne les mêmes résultats.
 
-- [ ] Stockage SQLite des lancements (paramètres, graine, résultats, version du système).
-- [ ] Liste de l'historique, relance d'un lancement.
-- [ ] Comparaison A/B : distributions superposées et écart.
+- [x] Stockage SQLite des lancements (`node:sqlite`, sans dépendance) : réglages, graine, résumé, version du système. Le serveur rejoue le lot avant de l'enregistrer.
+- [x] Liste de l'historique, rechargement d'un lancement avec vérification : « Résultat identique à l'enregistrement », ou alerte si le système a changé depuis.
+- [x] Comparaison A/B : réglages côte à côte, taux et moyennes de A et B avec leur intervalle, écart B − A avec intervalle de confiance (Newcombe pour les taux, Welch pour les moyennes) et verdict significatif ou non, séries par tour superposées.
+
+Les distributions ne sont pas superposées : leurs classes diffèrent d'un lot à l'autre. La comparaison porte sur les moyennes et les quantiles, dans le tableau sous chaque graphique.
 
 ## Phase 4 — Balayages et ouverture
 
@@ -103,4 +105,6 @@ Les simulations d'un système TypeScript tournent dans le processus principal : 
 - **Fastify et les champs inconnus** : par défaut, un champ absent du schéma est retiré en silence au lieu d'être refusé.
 - **Espaces de `Intl` en français** : espace fine insécable (U+202F) pour les milliers, insécable (U+00A0) devant « % ». Les tests comparent le texte produit par les mêmes fonctions de format.
 - **ECharts pèse lourd** : même en n'important que les modules utilisés, l'interface fait ~800 Ko (265 Ko compressés). Acceptable pour un outil local.
+- **Accents dans `curl` sous Windows** : un JSON passé en argument part dans l'encodage de la console, et « défaut » arrive abîmé. Envoyer le corps depuis un fichier UTF-8 (`--data-binary @fichier.json`).
+- **Séries par tour en fin de combat** : les derniers tours ne comptent que les combats encore en cours, si bien que leur moyenne peut remonter. Le nombre d'itérations par tour est dans le tableau de chaque série.
 - **`pnpm simuler` sans `--silent`** ajoute l'en-tête de pnpm à la sortie : utiliser `pnpm --silent simuler …` pour rediriger le rapport dans un fichier.
