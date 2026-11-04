@@ -1,11 +1,13 @@
 import {
   elementA,
+  intervalleDeLaMoyenne,
   type Classe,
   type Frequence,
   type PointDeConvergence,
   type PointDeSerie,
+  type Resume,
 } from '@batchtester/core';
-import type { ConvergenceDeCategorie } from '@batchtester/runner';
+import type { ComparaisonDeCategorie, ConvergenceDeCategorie } from '@batchtester/runner';
 import type { CustomSeriesRenderItemReturn, EChartsOption } from 'echarts';
 import { formaterNombre, formaterPourcentage } from './format.ts';
 import { COULEURS_DE_SERIE, type Theme } from './theme.ts';
@@ -19,11 +21,19 @@ const POLICE = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 const echapper = (texte: string): string =>
   texte.replace(/[&<>"']/g, (c) => `&#${String(c.charCodeAt(0))};`);
 
+interface Marque {
+  readonly dataIndex: number;
+  readonly seriesIndex?: number;
+}
+
 /** Ce qu'ECharts passe à une infobulle : la marque survolée, ou toutes celles d'un axe. */
-export type Survol = { readonly dataIndex: number } | readonly { readonly dataIndex: number }[];
+export type Survol = Marque | readonly Marque[];
 
 /** Index de la marque survolée, que l'infobulle reçoive une marque ou la liste d'un axe. */
 export const indexSurvole = (params: Survol): number => [params].flat()[0]?.dataIndex ?? 0;
+
+/** Série de la marque survolée (0 pour la première). */
+export const serieSurvolee = (params: Survol): number => [params].flat()[0]?.seriesIndex ?? 0;
 
 /** Ce que le dessin d'une marque personnalisée lit dans l'API d'ECharts. */
 export interface ApiDeDessin {
@@ -98,18 +108,27 @@ export const infobulleDesFrequences =
       frequences.reduce((somme, f) => somme + f.effectif, 0),
     );
 
-/** Dessine, pour une ligne [index, p, basse, haute], la moustache, le point et son étiquette. */
-export const dessinerUnTaux =
-  (couleur: string, theme: Theme) =>
+export interface StyleDIntervalle {
+  readonly couleur: string;
+  /** Facteur entre la valeur et l'axe : 100 pour une proportion affichée en pourcentage. */
+  readonly echelle: number;
+  readonly formater: (valeur: number) => string;
+  /** Décalage vertical en pixels : sépare deux lots sur la même ligne. */
+  readonly decalage: number;
+}
+
+/** Dessine, pour une ligne [index, valeur, basse, haute], la moustache, le point et son étiquette. */
+export const dessinerUnIntervalle =
+  ({ couleur, echelle, formater, decalage }: StyleDIntervalle, theme: Theme) =>
   (_params: unknown, api: ApiDeDessin): CustomSeriesRenderItemReturn => {
-    const enCentiemes = (dimension: number) => Number(api.value(dimension)) * 100;
+    const surLAxe = (dimension: number) => Number(api.value(dimension)) * echelle;
     const ligne = Number(api.value(0));
-    const p = enCentiemes(1);
-    const point = api.coord([p, ligne]);
-    const gauche = elementA(api.coord([enCentiemes(2), ligne]), 0);
-    const droite = elementA(api.coord([enCentiemes(3), ligne]), 0);
+    const valeur = surLAxe(1);
+    const point = api.coord([valeur, ligne]);
+    const gauche = elementA(api.coord([surLAxe(2), ligne]), 0);
+    const droite = elementA(api.coord([surLAxe(3), ligne]), 0);
     const x = elementA(point, 0);
-    const y = elementA(point, 1);
+    const y = elementA(point, 1) + decalage;
     const trait = { stroke: couleur, lineWidth: 2 };
     return {
       type: 'group',
@@ -127,7 +146,7 @@ export const dessinerUnTaux =
           x: droite + 8,
           y,
           style: {
-            text: formaterPourcentage(p / 100),
+            text: formater(valeur / echelle),
             fill: theme.encre,
             verticalAlign: 'middle',
             font: `12px ${POLICE}`,
@@ -136,6 +155,13 @@ export const dessinerUnTaux =
       ],
     };
   };
+
+/** Un taux : proportion affichée en pourcentage, sur un axe de 0 à 100. */
+export const dessinerUnTaux = (couleur: string, theme: Theme) =>
+  dessinerUnIntervalle(
+    { couleur, echelle: 100, formater: formaterPourcentage, decalage: 0 },
+    theme,
+  );
 
 export function optionDesFrequences(frequences: readonly Frequence[], theme: Theme): EChartsOption {
   return {
@@ -325,5 +351,169 @@ export function optionDeLaSerie(points: readonly PointDeSerie[], theme: Theme): 
         data: points.map((p) => p.moyenne),
       },
     ],
+  };
+}
+
+// --- Comparaison de deux lots : A dans la première couleur, B dans la seconde ---------------
+
+/** Écart vertical entre A et B sur une même ligne, en pixels. */
+export const DECALAGE_A_B = 7;
+
+export const LOTS = ['A', 'B'] as const;
+
+const styleDuLot = (
+  theme: Theme,
+  rang: number,
+  echelle: number,
+  formater: (valeur: number) => string,
+  decalage: number,
+): StyleDIntervalle => ({ couleur: elementA(theme.series, rang), echelle, formater, decalage });
+
+const legendeAB = (theme: Theme) => ({
+  top: 0,
+  left: 0,
+  data: [...LOTS],
+  textStyle: { color: theme.encreSecondaire },
+  icon: 'roundRect',
+});
+
+export const infobulleDeComparaisonDesTaux =
+  (categories: readonly ComparaisonDeCategorie[]) =>
+  (params: Survol): string => {
+    const rang = serieSurvolee(params);
+    const frequences = categories.flatMap((c) => (rang === 0 ? c.a : c.b) ?? []);
+    const total = frequences.reduce((somme, f) => somme + f.effectif, 0);
+    const frequence = elementA(frequences, indexSurvole(params));
+    return `${elementA(LOTS, rang)} · ${infobulleDeFrequence(frequence, total)}`;
+  };
+
+/** Taux de chaque catégorie dans A et dans B, chacun avec son intervalle, sur la même ligne. */
+export function optionDeComparaisonDesTaux(
+  categories: readonly ComparaisonDeCategorie[],
+  theme: Theme,
+): EChartsOption {
+  const lignesDe = (rang: number) =>
+    categories.flatMap((c, i) => {
+      const f = rang === 0 ? c.a : c.b;
+      return f === null ? [] : [[i, f.proportion, f.basse, f.haute]];
+    });
+  return {
+    ...base(theme),
+    grid: { ...GRILLE, right: 64, top: 32 },
+    legend: legendeAB(theme),
+    xAxis: {
+      ...axeDeValeurs(theme),
+      min: 0,
+      max: 100,
+      axisLabel: { color: theme.discret, formatter: '{value} %' },
+    },
+    yAxis: {
+      ...axeDeCategories(
+        theme,
+        categories.map((c) => c.categorie),
+      ),
+      inverse: true,
+    },
+    tooltip: {
+      ...infobulle(theme),
+      trigger: 'item',
+      formatter: infobulleDeComparaisonDesTaux(categories),
+    },
+    series: LOTS.map((nom, rang) => ({
+      type: 'custom',
+      name: nom,
+      color: elementA(theme.series, rang),
+      renderItem: dessinerUnIntervalle(
+        styleDuLot(
+          theme,
+          rang,
+          100,
+          formaterPourcentage,
+          rang === 0 ? -DECALAGE_A_B : DECALAGE_A_B,
+        ),
+        theme,
+      ),
+      encode: { x: [1, 2, 3], y: 0 },
+      data: lignesDe(rang),
+    })),
+  };
+}
+
+export const infobulleDeComparaisonDesMoyennes =
+  (resumes: readonly (Resume | null)[]) =>
+  (params: Survol): string => {
+    const rang = serieSurvolee(params);
+    const r = elementA(resumes, rang);
+    if (r === null) return elementA(LOTS, rang);
+    const { basse, haute } = intervalleDeLaMoyenne(r);
+    return (
+      `<strong>${elementA(LOTS, rang)}</strong> : moyenne ${formaterNombre(r.moyenne)}<br>` +
+      `IC 95 % : ${formaterNombre(basse)} – ${formaterNombre(haute)}<br>` +
+      `sur ${String(r.n)} itérations`
+    );
+  };
+
+/** Moyenne de A et de B, chacune avec son intervalle de confiance, sur deux lignes. */
+export function optionDeComparaisonDesMoyennes(
+  a: Resume | null,
+  b: Resume | null,
+  theme: Theme,
+): EChartsOption {
+  const resumes = [a, b];
+  return {
+    ...base(theme),
+    grid: { ...GRILLE, right: 64, top: 8 },
+    xAxis: { ...axeDeValeurs(theme), scale: true },
+    yAxis: { ...axeDeCategories(theme, LOTS), inverse: true },
+    tooltip: {
+      ...infobulle(theme),
+      trigger: 'item',
+      formatter: infobulleDeComparaisonDesMoyennes(resumes),
+    },
+    series: resumes.map((r, rang) => {
+      const intervalle = r === null ? null : intervalleDeLaMoyenne(r);
+      return {
+        type: 'custom',
+        name: elementA(LOTS, rang),
+        renderItem: dessinerUnIntervalle(styleDuLot(theme, rang, 1, formaterNombre, 0), theme),
+        encode: { x: [1, 2, 3], y: 0 },
+        data:
+          r === null || intervalle === null
+            ? []
+            : [[rang, r.moyenne, intervalle.basse, intervalle.haute]],
+      };
+    }),
+  };
+}
+
+/** Moyenne par tour de A et de B. */
+export function optionDeComparaisonDesSeries(
+  a: readonly PointDeSerie[],
+  b: readonly PointDeSerie[],
+  theme: Theme,
+): EChartsOption {
+  const longueur = Math.max(a.length, b.length);
+  return {
+    ...base(theme),
+    grid: { ...GRILLE_AVEC_NOM_D_AXE, top: 32 },
+    legend: legendeAB(theme),
+    xAxis: {
+      ...axeDeCategories(
+        theme,
+        Array.from({ length: longueur }, (_, i) => String(i)),
+      ),
+      ...nomDAxe(theme, 'tour'),
+      boundaryGap: false,
+    },
+    yAxis: { ...axeDeValeurs(theme), scale: true },
+    tooltip: { ...infobulle(theme), trigger: 'axis', valueFormatter: enNombre },
+    series: [a, b].map((points, rang) => ({
+      type: 'line',
+      name: elementA(LOTS, rang),
+      showSymbol: false,
+      color: elementA(theme.series, rang),
+      lineStyle: { width: 2 },
+      data: points.map((p) => p.moyenne),
+    })),
   };
 }

@@ -1,8 +1,24 @@
-import { elementA, frequences, histogramme, type PointDeSerie } from '@batchtester/core';
-import { describe, expect, it } from 'vitest';
-import { formaterNombre, formaterPourcentage } from './format.ts';
 import {
+  elementA,
+  frequences,
+  histogramme,
+  intervalleDeLaMoyenne,
+  resumer,
+  type PointDeSerie,
+} from '@batchtester/core';
+import { describe, expect, it } from 'vitest';
+import { formaterDate, formaterEcart, formaterNombre, formaterPourcentage } from './format.ts';
+import {
+  DECALAGE_A_B,
+  dessinerUnIntervalle,
   dessinerUnTaux,
+  infobulleDeComparaisonDesMoyennes,
+  infobulleDeComparaisonDesTaux,
+  LOTS,
+  optionDeComparaisonDesMoyennes,
+  optionDeComparaisonDesSeries,
+  optionDeComparaisonDesTaux,
+  serieSurvolee,
   enNombre,
   enPourcentage,
   etiquetteDeClasse,
@@ -180,5 +196,119 @@ describe('série par tour', () => {
       '<strong>Tour 1</strong><br>moyenne 60 (50 – 70)<br>sur 1 itération',
     );
     expect(infobulleDeSerie(elementA(points, 0))).toContain('sur 3 itérations');
+  });
+});
+
+describe('formats de l’historique', () => {
+  it('écrit une date ISO à l’heure locale, et un écart avec son signe', () => {
+    expect(formaterDate('2026-11-04T10:30:00.000Z')).toMatch(/^04\/11\/2026 \d{2}:30$/u);
+    expect(formaterEcart(3.5)).toBe('+3,5');
+    expect(lisible(formaterEcart(-1.25))).toBe(lisible(formaterNombre(-1.25)));
+    expect(formaterEcart(0)).toBe('0');
+  });
+});
+
+describe('intervalle générique', () => {
+  it('place la valeur sur l’axe selon l’échelle, décale la ligne et formate l’étiquette', () => {
+    const ligne = [0, 12, 10, 14];
+    const api = {
+      value: (d: number) => ligne[d],
+      coord: ([x = 0, y = 0]: number[]) => [x, y * 10],
+    };
+    const style = { couleur: '#abc', echelle: 1, formater: formaterNombre, decalage: -7 };
+    expect(dessinerUnIntervalle(style, CLAIR)({}, api)).toMatchObject({
+      children: [
+        { shape: { x1: 10, y1: -7, x2: 14, y2: -7 } },
+        {},
+        {},
+        { shape: { cx: 12, cy: -7 } },
+        { style: { text: '12' } },
+      ],
+    });
+  });
+
+  it('dit quelle série est survolée', () => {
+    expect(serieSurvolee({ dataIndex: 0, seriesIndex: 1 })).toBe(1);
+    expect(serieSurvolee([{ dataIndex: 0 }])).toBe(0);
+    expect(serieSurvolee([])).toBe(0);
+  });
+});
+
+describe('comparaison', () => {
+  const [pile, face] = frequences(['pile', 'face', 'pile'], ['pile', 'face']);
+  const [pileB, faceB] = frequences(['face', 'face'], ['pile', 'face']);
+  if (!pile || !face || !pileB || !faceB) throw new Error('fréquences');
+  const categories = [
+    { categorie: 'pile', a: pile, b: pileB, ecart: null },
+    { categorie: 'face', a: face, b: faceB, ecart: null },
+    { categorie: 'tranche', a: null, b: faceB, ecart: null },
+  ];
+
+  it('place A et B de part et d’autre de chaque ligne, aux deux premières couleurs', () => {
+    const option = optionDeComparaisonDesTaux(categories, CLAIR);
+    expect(option.yAxis).toMatchObject({ data: ['pile', 'face', 'tranche'] });
+    expect(seriesDe(option)).toMatchObject([
+      {
+        name: 'A',
+        color: CLAIR.series[0],
+        data: [
+          [0, pile.proportion, pile.basse, pile.haute],
+          [1, face.proportion, face.basse, face.haute],
+        ],
+      },
+      {
+        name: 'B',
+        color: CLAIR.series[1],
+        data: [
+          [0, 0, pileB.basse, pileB.haute],
+          [1, 1, faceB.basse, faceB.haute],
+          [2, 1, faceB.basse, faceB.haute],
+        ],
+      },
+    ]);
+    expect(DECALAGE_A_B).toBe(7);
+    expect(LOTS).toEqual(['A', 'B']);
+  });
+
+  it('dit, au survol, de quel lot et de quelle catégorie il s’agit', () => {
+    const infobulle = infobulleDeComparaisonDesTaux(categories);
+    expect(infobulle({ dataIndex: 1, seriesIndex: 0 })).toBe(
+      `A · ${infobulleDeFrequence(face, 3)}`,
+    );
+    expect(infobulle({ dataIndex: 2, seriesIndex: 1 })).toBe(
+      `B · ${infobulleDeFrequence(faceB, 4)}`,
+    );
+  });
+
+  const a = resumer([1, 2, 3, 4, 5]);
+  const b = resumer([4, 5, 6]);
+
+  it('met la moyenne de A et celle de B sur deux lignes, avec leur intervalle', () => {
+    if (a === null || b === null) throw new Error('résumés');
+    const ia = intervalleDeLaMoyenne(a);
+    const option = optionDeComparaisonDesMoyennes(a, null, CLAIR);
+    expect(seriesDe(option)).toMatchObject([
+      { name: 'A', data: [[0, 3, ia.basse, ia.haute]] },
+      { name: 'B', data: [] },
+    ]);
+    const infobulle = infobulleDeComparaisonDesMoyennes([a, null]);
+    expect(lisible(infobulle({ dataIndex: 0, seriesIndex: 0 }))).toBe(
+      `<strong>A</strong> : moyenne 3<br>IC 95 % : ${lisible(formaterNombre(ia.basse))} – ${lisible(formaterNombre(ia.haute))}<br>sur 5 itérations`,
+    );
+    expect(infobulle({ dataIndex: 0, seriesIndex: 1 })).toBe('B');
+    expect(seriesDe(optionDeComparaisonDesMoyennes(a, b, CLAIR))[1]).toMatchObject({
+      data: [[1, 5, expect.any(Number), expect.any(Number)]],
+    });
+  });
+
+  it('trace la moyenne par tour de A et de B, sur toute la longueur de la plus longue', () => {
+    const points = (moyennes: number[]) =>
+      moyennes.map((moyenne, indice) => ({ indice, n: 1, moyenne, min: moyenne, max: moyenne }));
+    const option = optionDeComparaisonDesSeries(points([10, 5]), points([10, 8, 2]), CLAIR);
+    expect(option.xAxis).toMatchObject({ data: ['0', '1', '2'] });
+    expect(seriesDe(option)).toMatchObject([
+      { name: 'A', color: CLAIR.series[0], data: [10, 5] },
+      { name: 'B', color: CLAIR.series[1], data: [10, 8, 2] },
+    ]);
   });
 });

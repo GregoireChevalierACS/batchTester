@@ -246,3 +246,153 @@ button {
 .donnees td:first-child {
   text-align: left;
 }
+
+/* Historique et comparaison */
+
+.historique {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.historique h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.historique ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.historique li {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--bordure);
+  border-radius: 6px;
+}
+
+.historique li.choisi {
+  border-color: var(--accent);
+}
+
+.historique small {
+  color: var(--encre-secondaire);
+}
+
+.historique .actions {
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 1.4em;
+  margin: 0 4px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--surface);
+  font-weight: 600;
+  text-align: center;
+}
+
+.onglets {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.onglets button[aria-pressed='true'] {
+  font-weight: 600;
+  outline: 2px solid var(--accent);
+}
+
+.enregistrer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.verifie {
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+}
+
+.lots-compares {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+
+.lots-compares div {
+  display: flex;
+  gap: 8px;
+}
+
+.lots-compares dt {
+  font-weight: 600;
+}
+
+.lots-compares dd {
+  margin: 0;
+}
+
+/* Pastilles des lots : mêmes couleurs que les séries A et B des graphiques. */
+.pastille {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.pastille-0 {
+  background: #2a78d6;
+}
+
+.pastille-1 {
+  background: #eb6834;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pastille-0 {
+    background: #3987e5;
+  }
+
+  .pastille-1 {
+    background: #d95926;
+  }
+}
+
+.tableau {
+  width: 100%;
+  margin-top: 6px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.tableau th,
+.tableau td {
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--bordure);
+  text-align: right;
+}
+
+.tableau th:first-child,
+.tableau td:first-child {
+  text-align: left;
+}
+
+.ecart {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+}
