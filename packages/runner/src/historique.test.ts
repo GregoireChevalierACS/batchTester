@@ -33,6 +33,18 @@ describe('historique', () => {
 
   it('propose un nom qui cite la graine et chaque réglage', () => {
     expect(nomParDefaut(RESUME_DE_TEST)).toBe('graine 42 · lancers=3');
+    const deuxReglages = {
+      ...RESUME_DE_TEST,
+      definition: {
+        ...RESUME_DE_TEST.definition,
+        parametres: [
+          ...RESUME_DE_TEST.definition.parametres,
+          { kind: 'booleen' as const, nom: 'truque', defaut: false },
+        ],
+      },
+      valeurs: { lancers: 3, truque: true },
+    };
+    expect(nomParDefaut(deuxReglages)).toBe('graine 42 · lancers=3, truque=true');
   });
 
   it('date chaque enregistrement de la doublure une seconde après le précédent', () => {

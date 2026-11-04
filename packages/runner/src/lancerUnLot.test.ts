@@ -248,4 +248,14 @@ describe("échec d'une itération", () => {
     await lancerUnLot(simulateur, DEMANDE, { simultanees: 1 });
     expect(simulateur.appels).toHaveLength(6);
   });
+
+  it('arrête aussi les autres simulations en cours après un échec', async () => {
+    const simulateur = new SimulateurScripte((valeurs, g) => {
+      if (grainesEnEchec.has(g)) throw new Error('pv négatifs');
+      return resultatDeTest(valeurs, g);
+    });
+    await lancerUnLot(simulateur, DEMANDE, { simultanees: 3 });
+    // L'échec arrive à l'index 5 : seules les itérations déjà entamées se terminent.
+    expect(simulateur.appels.length).toBeLessThanOrEqual(8);
+  });
 });
