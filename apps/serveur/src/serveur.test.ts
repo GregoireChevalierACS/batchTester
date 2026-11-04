@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { SystemeDecouvert } from '@batchtester/adapters';
 import type { Systeme } from '@batchtester/core';
 
+import { HistoriqueEnMemoire } from '@batchtester/runner/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 import combat from '../../../systemes/combat/src/index.ts';
 import { creerLeServeur, PROGRESSIONS_PAR_LOT } from './serveur.ts';
@@ -27,7 +28,10 @@ const demande = (corps: Record<string, unknown>) => ({
 
 describe('liste des systèmes', () => {
   it('donne chaque système avec sa définition', async () => {
-    const reponse = await creerLeServeur({ systemes: SYSTEMES }).inject('/api/systemes');
+    const reponse = await creerLeServeur({
+      systemes: SYSTEMES,
+      historique: new HistoriqueEnMemoire(),
+    }).inject('/api/systemes');
     expect(reponse.statusCode).toBe(200);
     const definition: unknown = JSON.parse(JSON.stringify(combat.definition));
     expect(reponse.json()).toEqual([{ id: 'combat', definition }]);
@@ -36,7 +40,10 @@ describe('liste des systèmes', () => {
 
 describe('lancer un lot', () => {
   it('envoie la progression au fil du lot, puis le résumé', async () => {
-    const reponse = await creerLeServeur({ systemes: SYSTEMES }).inject(demande({}));
+    const reponse = await creerLeServeur({
+      systemes: SYSTEMES,
+      historique: new HistoriqueEnMemoire(),
+    }).inject(demande({}));
     expect(reponse.statusCode).toBe(200);
     expect(reponse.headers['content-type']).toBe('application/x-ndjson; charset=utf-8');
     const progressions = progressionsDe(reponse.body);
@@ -50,9 +57,10 @@ describe('lancer un lot', () => {
   });
 
   it('signale aussi la dernière itération quand le pas ne tombe pas juste', async () => {
-    const reponse = await creerLeServeur({ systemes: SYSTEMES }).inject(
-      demande({ iterations: 150 }),
-    );
+    const reponse = await creerLeServeur({
+      systemes: SYSTEMES,
+      historique: new HistoriqueEnMemoire(),
+    }).inject(demande({ iterations: 150 }));
     expect(progressionsDe(reponse.body).slice(-2)).toMatchObject([
       { faites: 148 },
       { faites: 150 },
@@ -60,16 +68,17 @@ describe('lancer un lot', () => {
   });
 
   it('donne le même résumé pour la même graine', async () => {
-    const serveur = creerLeServeur({ systemes: SYSTEMES });
+    const serveur = creerLeServeur({ systemes: SYSTEMES, historique: new HistoriqueEnMemoire() });
     const premier = lire((await serveur.inject(demande({}))).body).at(-1);
     const second = lire((await serveur.inject(demande({}))).body).at(-1);
     expect(second).toEqual(premier);
   });
 
   it('explique un lot refusé dans le flux', async () => {
-    const reponse = await creerLeServeur({ systemes: SYSTEMES }).inject(
-      demande({ surcharges: { pvA: 0 } }),
-    );
+    const reponse = await creerLeServeur({
+      systemes: SYSTEMES,
+      historique: new HistoriqueEnMemoire(),
+    }).inject(demande({ surcharges: { pvA: 0 } }));
     expect(lire(reponse.body)).toEqual([
       {
         type: 'probleme',
@@ -79,15 +88,19 @@ describe('lancer un lot', () => {
   });
 
   it('refuse un système inconnu', async () => {
-    const reponse = await creerLeServeur({ systemes: SYSTEMES }).inject(
-      demande({ systeme: 'tcg' }),
-    );
+    const reponse = await creerLeServeur({
+      systemes: SYSTEMES,
+      historique: new HistoriqueEnMemoire(),
+    }).inject(demande({ systeme: 'tcg' }));
     expect(reponse.statusCode).toBe(404);
     expect(reponse.json()).toEqual({ message: 'Système « tcg » inconnu.' });
   });
 
   it('refuse une graine hors des 32 bits', async () => {
-    const reponse = await creerLeServeur({ systemes: SYSTEMES }).inject(demande({ graine: -1 }));
+    const reponse = await creerLeServeur({
+      systemes: SYSTEMES,
+      historique: new HistoriqueEnMemoire(),
+    }).inject(demande({ graine: -1 }));
     expect(reponse.statusCode).toBe(400);
     expect(reponse.json()).toEqual({ message: 'La graine doit aller de 0 à 4294967295.' });
   });
@@ -95,7 +108,10 @@ describe('lancer un lot', () => {
   it.each([{ graine: 'abc' }, { iterations: 2.5 }, { surcharges: 'pvA=3' }])(
     'refuse une demande mal formée (%j)',
     async (corps) => {
-      const reponse = await creerLeServeur({ systemes: SYSTEMES }).inject(demande(corps));
+      const reponse = await creerLeServeur({
+        systemes: SYSTEMES,
+        historique: new HistoriqueEnMemoire(),
+      }).inject(demande(corps));
       expect(reponse.statusCode).toBe(400);
     },
   );
@@ -123,7 +139,10 @@ describe('annulation', () => {
         return { x: 1 };
       },
     };
-    ouvert = creerLeServeur({ systemes: [{ id: 'lent', systeme: lent }] });
+    ouvert = creerLeServeur({
+      systemes: [{ id: 'lent', systeme: lent }],
+      historique: new HistoriqueEnMemoire(),
+    });
     const adresse = await ouvert.listen({ host: '127.0.0.1', port: 0 });
     const controleur = new AbortController();
     const reponse = await fetch(`${adresse}/api/lots`, {
@@ -150,7 +169,11 @@ describe("fichiers de l'interface", () => {
     const dossier = await mkdtemp(join(tmpdir(), 'batchtester-web-'));
     try {
       await writeFile(join(dossier, 'index.html'), '<!doctype html><title>batchTester</title>');
-      const serveur = creerLeServeur({ systemes: SYSTEMES, dossierWeb: dossier });
+      const serveur = creerLeServeur({
+        systemes: SYSTEMES,
+        historique: new HistoriqueEnMemoire(),
+        dossierWeb: dossier,
+      });
       const reponse = await serveur.inject('/');
       expect(reponse.statusCode).toBe(200);
       expect(reponse.body).toContain('<title>batchTester</title>');
@@ -160,6 +183,12 @@ describe("fichiers de l'interface", () => {
   });
 
   it("ne sert rien d'autre que l'API sans interface construite", async () => {
-    expect((await creerLeServeur({ systemes: SYSTEMES }).inject('/')).statusCode).toBe(404);
+    expect(
+      (
+        await creerLeServeur({ systemes: SYSTEMES, historique: new HistoriqueEnMemoire() }).inject(
+          '/',
+        )
+      ).statusCode,
+    ).toBe(404);
   });
 });
