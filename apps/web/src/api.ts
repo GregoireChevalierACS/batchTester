@@ -1,5 +1,10 @@
 import type { DefinitionDeSysteme } from '@batchtester/core';
-import type { DemandeDeLotADistance, EvenementDeLot } from '@batchtester/runner';
+import type {
+  ApercuDeLancement,
+  DemandeDeLotADistance,
+  EvenementDeLot,
+  Lancement,
+} from '@batchtester/runner';
 
 export interface SystemeDisponible {
   readonly id: string;
@@ -15,6 +20,11 @@ export interface Api {
     ecouter: (evenement: EvenementDeLot) => void,
     signal: AbortSignal,
   ): Promise<void>;
+  lancements(): Promise<readonly ApercuDeLancement[]>;
+  lancement(id: number): Promise<Lancement>;
+  /** Le serveur rejoue le lot avec ces réglages et l'enregistre ; un nom vide est remplacé. */
+  enregistrer(demande: DemandeDeLotADistance, nom: string): Promise<ApercuDeLancement>;
+  supprimer(id: number): Promise<void>;
 }
 
 export const MESSAGE_SERVEUR_INJOIGNABLE =
@@ -34,12 +44,22 @@ function estUnEvenement(valeur: unknown): valeur is EvenementDeLot {
 
 function estUneListeDeSystemes(valeur: unknown): valeur is SystemeDisponible[] {
   return (
-    Array.isArray(valeur) &&
-    valeur.every(
-      (s: unknown) => typeof s === 'object' && s !== null && 'id' in s && 'definition' in s,
-    )
+    Array.isArray(valeur) && valeur.every((s: unknown) => estUnObjetAvec(s, 'id', 'definition'))
   );
 }
+
+const estUnObjetAvec = (valeur: unknown, ...champs: string[]): valeur is object =>
+  typeof valeur === 'object' && valeur !== null && champs.every((champ) => champ in valeur);
+
+function estUneListeDApercus(valeur: unknown): valeur is ApercuDeLancement[] {
+  return Array.isArray(valeur) && valeur.every((l: unknown) => estUnObjetAvec(l, 'id', 'nom'));
+}
+
+const estUnLancement = (valeur: unknown): valeur is Lancement =>
+  estUnObjetAvec(valeur, 'id', 'nom', 'resume');
+
+const estUnApercu = (valeur: unknown): valeur is ApercuDeLancement =>
+  estUnObjetAvec(valeur, 'id', 'nom');
 
 async function messageDErreur(reponse: Response): Promise<string> {
   const corps: unknown = await reponse.json().catch(() => null);
@@ -65,13 +85,32 @@ export async function lireLesLignes(
 }
 
 export function creerLApi(chercher: typeof fetch = fetch): Api {
+  /** Demande du JSON au serveur : une erreur HTTP devient une exception avec son message. */
+  async function demander<T>(
+    adresse: string,
+    estValide: (valeur: unknown) => valeur is T,
+    init?: RequestInit,
+  ): Promise<T> {
+    const reponse = await chercher(adresse, init);
+    if (!reponse.ok) throw new Error(await messageDErreur(reponse));
+    const corps: unknown = await reponse.json();
+    if (!estValide(corps)) throw new Error(`Réponse illisible pour ${adresse}.`);
+    return corps;
+  }
+
   return {
-    async systemes() {
-      const reponse = await chercher('/api/systemes');
+    systemes: () => demander('/api/systemes', estUneListeDeSystemes),
+    lancements: () => demander('/api/lancements', estUneListeDApercus),
+    lancement: (id) => demander(`/api/lancements/${String(id)}`, estUnLancement),
+    enregistrer: (demande, nom) =>
+      demander('/api/lancements', estUnApercu, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...demande, nom }),
+      }),
+    async supprimer(id) {
+      const reponse = await chercher(`/api/lancements/${String(id)}`, { method: 'DELETE' });
       if (!reponse.ok) throw new Error(await messageDErreur(reponse));
-      const corps: unknown = await reponse.json();
-      if (!estUneListeDeSystemes(corps)) throw new Error('Liste des systèmes illisible.');
-      return corps;
     },
 
     async lancer(demande, ecouter, signal) {
