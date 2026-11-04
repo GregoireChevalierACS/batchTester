@@ -1,3 +1,4 @@
+import type { AxeDeBalayage, Balayage } from './balayer.ts';
 import type { ResumeDeLot } from './resumerLeLot.ts';
 
 /**
@@ -16,4 +17,14 @@ export interface DemandeDeLotADistance {
   readonly graine: number;
   readonly iterations: number;
   readonly surcharges: Readonly<Record<string, unknown>>;
+}
+
+/** Ce qu'un balayage lancé à distance renvoie : des progressions, puis le balayage ou le problème. */
+export type EvenementDeBalayage =
+  | { readonly type: 'progression'; readonly faites: number; readonly total: number }
+  | { readonly type: 'balayage'; readonly balayage: Balayage }
+  | { readonly type: 'probleme'; readonly message: string };
+
+export interface DemandeDeBalayageADistance extends DemandeDeLotADistance {
+  readonly axes: readonly AxeDeBalayage[];
 }

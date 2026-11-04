@@ -163,3 +163,48 @@ export const lireUnTexte = (valeurs: Valeurs, nom: string): string =>
 
 export const lireUnBooleen = (valeurs: Valeurs, nom: string): boolean =>
   lire(valeurs, nom, 'booléen', (v) => typeof v === 'boolean');
+
+// Valeurs d'un balayage : quelles valeurs d'un paramètre essayer, une par point.
+
+/** Au-delà, un axe de balayage n'apprend plus rien et coûte cher. */
+export const POINTS_MAXIMAUX_PAR_AXE = 50;
+
+export type ErreurDePlage =
+  | { readonly kind: 'points-invalides'; readonly points: number }
+  | { readonly kind: 'plage-hors-bornes'; readonly de: number; readonly a: number };
+
+/** Toutes les valeurs d'un paramètre à valeurs fermées : les options d'un choix, ou non et oui. */
+export const valeursPossibles = (def: DefChoix | DefBooleen): readonly ValeurDeParametre[] =>
+  def.kind === 'choix' ? [...def.options] : [false, true];
+
+// Retire le bruit des flottants : 0,1 + 2 × 0,05 doit valoir 0,2, pas 0,20000000000000004.
+const sansBruit = (x: number): number => Number(x.toPrecision(12));
+
+/** Valeur la plus proche de x sur la grille du paramètre, sans dépasser max. */
+function surLaGrille(def: DefNombre | DefEntier, x: number): number {
+  if (def.kind === 'entier') return Math.round(x);
+  const cransMax = Math.floor((def.max - def.min) / def.pas + TOLERANCE_DU_PAS);
+  const crans = Math.min(cransMax, Math.round((x - def.min) / def.pas));
+  return sansBruit(def.min + crans * def.pas);
+}
+
+/**
+ * `points` valeurs réparties régulièrement de `de` à `a` (dans un sens ou dans l'autre), ramenées
+ * sur la grille du paramètre. Les doublons créés par l'arrondi sont retirés : un entier balayé de
+ * 1 à 3 en 10 points ne donne que 1, 2 et 3.
+ */
+export function valeursEchelonnees(
+  def: DefNombre | DefEntier,
+  de: number,
+  a: number,
+  points: number,
+): Result<readonly number[], ErreurDePlage> {
+  if (!Number.isInteger(points) || points < 1 || points > POINTS_MAXIMAUX_PAR_AXE) {
+    return err({ kind: 'points-invalides', points });
+  }
+  const dansLesBornes = (x: number) => Number.isFinite(x) && x >= def.min && x <= def.max;
+  if (!dansLesBornes(de) || !dansLesBornes(a)) return err({ kind: 'plage-hors-bornes', de, a });
+  const pas = points === 1 ? 0 : (a - de) / (points - 1);
+  const valeurs = Array.from({ length: points }, (_, i) => surLaGrille(def, de + i * pas));
+  return ok([...new Set(valeurs)]);
+}

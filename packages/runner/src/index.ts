@@ -1,11 +1,28 @@
 export {
+  indicateursDuBalayage,
+  lancerUnBalayage,
+  POINTS_MAXIMAUX_PAR_BALAYAGE,
+  type AxeDeBalayage,
+  type Balayage,
+  type DemandeDeBalayage,
+  type Indicateur,
+  type PointDeBalayage,
+  type ProblemeDeBalayage,
+  type ValeurDIndicateur,
+} from './balayer.ts';
+export {
   comparerDeuxLots,
   type Comparaison,
   type ComparaisonDeCategorie,
   type ComparaisonDeMesure,
   type ComparaisonDeParametre,
 } from './comparerDeuxLots.ts';
-export type { DemandeDeLotADistance, EvenementDeLot } from './evenements.ts';
+export type {
+  DemandeDeBalayageADistance,
+  DemandeDeLotADistance,
+  EvenementDeBalayage,
+  EvenementDeLot,
+} from './evenements.ts';
 export {
   apercuDe,
   nomParDefaut,
@@ -25,7 +42,7 @@ export {
   type OptionsDeLot,
   type ProblemeDeLot,
 } from './lancerUnLot.ts';
-export { expliquerUnProblemeDeLot } from './messages.ts';
+export { expliquerUnProblemeDeBalayage, expliquerUnProblemeDeLot } from './messages.ts';
 export type { Simulateur } from './ports.ts';
 export {
   POINTS_DE_CONVERGENCE,
