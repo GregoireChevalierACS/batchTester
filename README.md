@@ -24,6 +24,13 @@ Chaque système du dossier `systemes/` est proposé. Chaque curseur ou champ mod
 
 En développement : `pnpm serveur` dans un terminal, `pnpm dev:web` dans un autre (Vite transmet `/api` au serveur).
 
+### Historique et comparaison
+
+« Enregistrer ce lancement » garde les réglages, la graine et le résumé dans `donnees/historique.sqlite` (ignoré par git ; autre emplacement avec `BATCHTESTER_HISTORIQUE`). Depuis l'historique :
+
+- **Recharger** remet les réglages et relance le lot : l'interface confirme que le résultat est identique à l'enregistrement, ou signale que le système a changé depuis.
+- **Cocher deux lancements** puis « Comparer A et B » : réglages côte à côte, puis pour chaque mesure les valeurs de A et B et l'écart B − A avec son intervalle de confiance à 95 %, et s'il est significatif.
+
 ## Brancher un système
 
 Un système est un module dont l'export par défaut décrit ses paramètres et ses mesures, et joue une itération. Tout le hasard passe par `aleatoire` :
