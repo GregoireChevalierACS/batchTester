@@ -1,11 +1,15 @@
 import { creerAleatoire, creerGraine, type Systeme } from '@batchtester/core';
 import {
   apercuDe,
+  expliquerUnProblemeDeBalayage,
+  lancerUnBalayage,
   lancerUnLot,
   nomParDefaut,
   resumerLeLot,
   type ApercuDeLancement,
+  type DemandeDeBalayageADistance,
   type DemandeDeLotADistance,
+  type EvenementDeBalayage,
   type EvenementDeLot,
   type Lancement,
   type ResumeDeLot,
@@ -43,6 +47,42 @@ type Scenario = (
   signal: AbortSignal,
 ) => Promise<void>;
 
+const simulateurDe = (systeme: Systeme) => ({
+  definition: systeme.definition,
+  simuler: (valeurs: Parameters<Systeme['simuler']>[0], g: Parameters<typeof creerAleatoire>[0]) =>
+    Promise.resolve(systeme.simuler(valeurs, creerAleatoire(g))),
+});
+
+type ScenarioDeBalayage = (
+  demande: DemandeDeBalayageADistance,
+  ecouter: (evenement: EvenementDeBalayage) => void,
+  signal: AbortSignal,
+) => Promise<void>;
+
+/** Joue réellement le balayage avec le runner, comme le ferait le serveur. */
+export const balayageReel: ScenarioDeBalayage = async (demande, ecouter, signal) => {
+  const systeme = demande.systeme === 'pile' ? pileOuFace : combat;
+  const graine = creerGraine(demande.graine);
+  if (!graine.ok) throw new Error('graine invalide');
+  const balayage = await lancerUnBalayage(
+    simulateurDe(systeme),
+    {
+      surcharges: demande.surcharges,
+      graine: graine.value,
+      iterations: demande.iterations,
+      axes: demande.axes,
+    },
+    {
+      signal,
+      surProgression: (faites, total) => {
+        ecouter({ type: 'progression', faites, total });
+      },
+    },
+  );
+  if (balayage.ok) ecouter({ type: 'balayage', balayage: balayage.value });
+  else ecouter({ type: 'probleme', message: expliquerUnProblemeDeBalayage(balayage.error) });
+};
+
 /** Joue réellement le lot avec le runner, comme le ferait le serveur. */
 export const scenarioReel: Scenario = async (demande, ecouter, signal) => {
   const systeme = demande.systeme === 'pile' ? pileOuFace : combat;
@@ -69,6 +109,17 @@ export class FausseApi implements Api {
   readonly demandes: { demande: DemandeDeLotADistance; signal: AbortSignal }[] = [];
   liste: Promise<readonly SystemeDisponible[]> = Promise.resolve([COMBAT, PILE_OU_FACE]);
   scenario: Scenario = scenarioReel;
+  readonly balayages: DemandeDeBalayageADistance[] = [];
+  scenarioDeBalayage: ScenarioDeBalayage = balayageReel;
+
+  balayer(
+    demande: DemandeDeBalayageADistance,
+    ecouter: (e: EvenementDeBalayage) => void,
+    signal: AbortSignal,
+  ) {
+    this.balayages.push(demande);
+    return this.scenarioDeBalayage(demande, ecouter, signal);
+  }
 
   systemes() {
     return this.liste;

@@ -1,7 +1,9 @@
 import type { DefinitionDeSysteme } from '@batchtester/core';
 import type {
   ApercuDeLancement,
+  DemandeDeBalayageADistance,
   DemandeDeLotADistance,
+  EvenementDeBalayage,
   EvenementDeLot,
   Lancement,
 } from '@batchtester/runner';
@@ -20,6 +22,12 @@ export interface Api {
     ecouter: (evenement: EvenementDeLot) => void,
     signal: AbortSignal,
   ): Promise<void>;
+  /** Lance un balayage ; même déroulement qu'un lot, avec le balayage complet à la fin. */
+  balayer(
+    demande: DemandeDeBalayageADistance,
+    ecouter: (evenement: EvenementDeBalayage) => void,
+    signal: AbortSignal,
+  ): Promise<void>;
   lancements(): Promise<readonly ApercuDeLancement[]>;
   lancement(id: number): Promise<Lancement>;
   /** Le serveur rejoue le lot avec ces réglages et l'enregistre ; un nom vide est remplacé. */
@@ -30,17 +38,18 @@ export interface Api {
 export const MESSAGE_SERVEUR_INJOIGNABLE =
   'Le serveur ne répond pas. Est-il lancé (pnpm serveur ou pnpm studio) ?';
 
-const TYPES_D_EVENEMENT = new Set(['progression', 'resume', 'probleme']);
-
 // Le serveur est celui du dépôt : on vérifie la forme générale, pas chaque champ.
-function estUnEvenement(valeur: unknown): valeur is EvenementDeLot {
-  return (
-    typeof valeur === 'object' &&
-    valeur !== null &&
-    'type' in valeur &&
-    TYPES_D_EVENEMENT.has(String(valeur.type))
-  );
-}
+const aUnTypeParmi = (valeur: unknown, types: readonly string[]): boolean =>
+  typeof valeur === 'object' &&
+  valeur !== null &&
+  'type' in valeur &&
+  types.includes(String(valeur.type));
+
+const estUnEvenementDeLot = (valeur: unknown): valeur is EvenementDeLot =>
+  aUnTypeParmi(valeur, ['progression', 'resume', 'probleme']);
+
+const estUnEvenementDeBalayage = (valeur: unknown): valeur is EvenementDeBalayage =>
+  aUnTypeParmi(valeur, ['progression', 'balayage', 'probleme']);
 
 function estUneListeDeSystemes(valeur: unknown): valeur is SystemeDisponible[] {
   return (
@@ -98,6 +107,41 @@ export function creerLApi(chercher: typeof fetch = fetch): Api {
     return corps;
   }
 
+  /**
+   * Envoie une demande et transmet chaque événement du flux NDJSON de la réponse. Une erreur HTTP
+   * ou réseau devient un événement « probleme » ; un abandon voulu ne transmet rien.
+   */
+  async function diffuser<E>(
+    adresse: string,
+    demande: unknown,
+    estUnEvenement: (valeur: unknown) => valeur is E,
+    ecouter: (evenement: E | { type: 'probleme'; message: string }) => void,
+    signal: AbortSignal,
+  ): Promise<void> {
+    try {
+      const reponse = await chercher(adresse, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(demande),
+        signal,
+      });
+      if (!reponse.ok || reponse.body === null) {
+        ecouter({ type: 'probleme', message: await messageDErreur(reponse) });
+        return;
+      }
+      await lireLesLignes(reponse.body, (valeur) => {
+        if (estUnEvenement(valeur)) ecouter(valeur);
+      });
+    } catch (erreur) {
+      // Abandon voulu (un réglage a changé, ou annulation) : plus personne n'attend ce calcul.
+      if (signal.aborted) return;
+      ecouter({
+        type: 'probleme',
+        message: erreur instanceof TypeError ? MESSAGE_SERVEUR_INJOIGNABLE : String(erreur),
+      });
+    }
+  }
+
   return {
     systemes: () => demander('/api/systemes', estUneListeDeSystemes),
     lancements: () => demander('/api/lancements', estUneListeDApercus),
@@ -113,29 +157,9 @@ export function creerLApi(chercher: typeof fetch = fetch): Api {
       if (!reponse.ok) throw new Error(await messageDErreur(reponse));
     },
 
-    async lancer(demande, ecouter, signal) {
-      try {
-        const reponse = await chercher('/api/lots', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(demande),
-          signal,
-        });
-        if (!reponse.ok || reponse.body === null) {
-          ecouter({ type: 'probleme', message: await messageDErreur(reponse) });
-          return;
-        }
-        await lireLesLignes(reponse.body, (valeur) => {
-          if (estUnEvenement(valeur)) ecouter(valeur);
-        });
-      } catch (erreur) {
-        // Abandon voulu (un réglage a changé) : ce lot n'intéresse plus personne.
-        if (signal.aborted) return;
-        ecouter({
-          type: 'probleme',
-          message: erreur instanceof TypeError ? MESSAGE_SERVEUR_INJOIGNABLE : String(erreur),
-        });
-      }
-    },
+    lancer: (demande, ecouter, signal) =>
+      diffuser('/api/lots', demande, estUnEvenementDeLot, ecouter, signal),
+    balayer: (demande, ecouter, signal) =>
+      diffuser('/api/balayages', demande, estUnEvenementDeBalayage, ecouter, signal),
   };
 }
