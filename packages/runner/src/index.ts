@@ -1,4 +1,19 @@
+export {
+  comparerDeuxLots,
+  type Comparaison,
+  type ComparaisonDeCategorie,
+  type ComparaisonDeMesure,
+  type ComparaisonDeParametre,
+} from './comparerDeuxLots.ts';
 export type { DemandeDeLotADistance, EvenementDeLot } from './evenements.ts';
+export {
+  apercuDe,
+  nomParDefaut,
+  type ApercuDeLancement,
+  type Historique,
+  type Lancement,
+  type LancementAEnregistrer,
+} from './historique.ts';
 export {
   ITERATIONS_MAXIMALES,
   lancerUnLot,

@@ -1,10 +1,16 @@
 import { creerAleatoire, creerGraine, type Systeme } from '@batchtester/core';
 import {
+  apercuDe,
   lancerUnLot,
+  nomParDefaut,
   resumerLeLot,
+  type ApercuDeLancement,
   type DemandeDeLotADistance,
   type EvenementDeLot,
+  type Lancement,
+  type ResumeDeLot,
 } from '@batchtester/runner';
+import { HistoriqueEnMemoire } from '@batchtester/runner/testing';
 import combat from '../../../../systemes/combat/src/index.ts';
 import type { Api, SystemeDisponible } from '../api.ts';
 
@@ -75,6 +81,63 @@ export class FausseApi implements Api {
   ) {
     this.demandes.push({ demande, signal });
     return this.scenario(demande, ecouter, signal);
+  }
+
+  readonly historique = new HistoriqueEnMemoire();
+  /** Panne simulée de toutes les opérations sur l'historique. */
+  panneDeLHistorique: unknown = null;
+
+  private verifier() {
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- la doublure simule aussi une panne qui n'est pas une Error
+    if (this.panneDeLHistorique !== null) throw this.panneDeLHistorique;
+  }
+
+  lancements(): Promise<readonly ApercuDeLancement[]> {
+    return Promise.resolve().then(() => {
+      this.verifier();
+      return this.historique.lister();
+    });
+  }
+
+  lancement(id: number): Promise<Lancement> {
+    return Promise.resolve().then(() => {
+      this.verifier();
+      const lancement = this.historique.lire(id);
+      if (lancement === null) throw new Error(`Lancement n° ${String(id)} introuvable.`);
+      return lancement;
+    });
+  }
+
+  /** Comme le serveur : rejoue le lot, puis l'enregistre. */
+  async enregistrer(demande: DemandeDeLotADistance, nom: string): Promise<ApercuDeLancement> {
+    this.verifier();
+    const recu: { resume: ResumeDeLot | null; probleme: string } = {
+      resume: null,
+      probleme: 'lot sans résumé',
+    };
+    await scenarioReel(
+      demande,
+      (e) => {
+        if (e.type === 'resume') recu.resume = e.resume;
+        if (e.type === 'probleme') recu.probleme = e.message;
+      },
+      new AbortController().signal,
+    );
+    const { resume } = recu;
+    if (resume === null) throw new Error(recu.probleme);
+    const enregistre = this.historique.enregistrer({
+      systeme: demande.systeme,
+      nom: nom.trim() === '' ? nomParDefaut(resume) : nom.trim(),
+      resume,
+    });
+    return apercuDe(enregistre);
+  }
+
+  supprimer(id: number): Promise<void> {
+    return Promise.resolve().then(() => {
+      this.verifier();
+      this.historique.supprimer(id);
+    });
   }
 
   get derniere(): DemandeDeLotADistance | undefined {

@@ -4,18 +4,23 @@ import {
   simulateurQuiCede,
   type SystemeDecouvert,
 } from '@batchtester/adapters';
-import { creerGraine } from '@batchtester/core';
+import { creerGraine, err, ok, type Graine, type Result, type Systeme } from '@batchtester/core';
 import {
+  apercuDe,
   expliquerUnProblemeDeLot,
   lancerUnLot,
+  nomParDefaut,
   resumerLeLot,
   type DemandeDeLotADistance,
   type EvenementDeLot,
+  type Historique,
+  type OptionsDeLot,
 } from '@batchtester/runner';
 import Fastify, { type FastifyInstance } from 'fastify';
 
 export interface OptionsDuServeur {
   readonly systemes: readonly SystemeDecouvert[];
+  readonly historique: Historique;
   /** Interface construite (apps/web/dist). Absente en développement, où Vite la sert. */
   readonly dossierWeb?: string;
 }
@@ -25,20 +30,68 @@ export const PROGRESSIONS_PAR_LOT = 100;
 
 // Les bornes fines (graine sur 32 bits, nombre d'itérations, valeurs des paramètres) sont
 // vérifiées par le noyau et le runner, qui expliquent chaque refus.
+const PROPRIETES_D_UNE_DEMANDE = {
+  systeme: { type: 'string' },
+  graine: { type: 'integer' },
+  iterations: { type: 'integer' },
+  surcharges: { type: 'object' },
+} as const;
+
 const SCHEMA_DE_DEMANDE = {
   type: 'object',
   required: ['systeme', 'graine', 'iterations', 'surcharges'],
-  properties: {
-    systeme: { type: 'string' },
-    graine: { type: 'integer' },
-    iterations: { type: 'integer' },
-    surcharges: { type: 'object' },
-  },
+  properties: PROPRIETES_D_UNE_DEMANDE,
 } as const;
 
-export function creerLeServeur({ systemes, dossierWeb }: OptionsDuServeur): FastifyInstance {
+const SCHEMA_D_ENREGISTREMENT = {
+  ...SCHEMA_DE_DEMANDE,
+  properties: { ...PROPRIETES_D_UNE_DEMANDE, nom: { type: 'string' } },
+} as const;
+
+const SCHEMA_D_IDENTIFIANT = {
+  type: 'object',
+  required: ['id'],
+  properties: { id: { type: 'integer' } },
+} as const;
+
+interface Refus {
+  readonly code: 400 | 404;
+  readonly message: string;
+}
+
+export function creerLeServeur({
+  systemes,
+  historique,
+  dossierWeb,
+}: OptionsDuServeur): FastifyInstance {
   const app = Fastify();
   const parId = new Map(systemes.map(({ id, systeme }) => [id, systeme]));
+
+  const preparer = (
+    demande: DemandeDeLotADistance,
+  ): Result<{ systeme: Systeme; graine: Graine }, Refus> => {
+    const systeme = parId.get(demande.systeme);
+    if (systeme === undefined) {
+      return err({ code: 404, message: `Système « ${demande.systeme} » inconnu.` });
+    }
+    const graine = creerGraine(demande.graine);
+    if (!graine.ok) return err({ code: 400, message: 'La graine doit aller de 0 à 4294967295.' });
+    return ok({ systeme, graine: graine.value });
+  };
+
+  const jouer = (
+    systeme: Systeme,
+    graine: Graine,
+    demande: DemandeDeLotADistance,
+    options: OptionsDeLot = {},
+  ) =>
+    lancerUnLot(
+      simulateurQuiCede(simulateurEnMemoire(systeme)),
+      { surcharges: demande.surcharges, graine, iterations: demande.iterations },
+      options,
+    );
+
+  const introuvable = (id: number): string => `Lancement n° ${String(id)} introuvable.`;
 
   app.get('/api/systemes', () =>
     systemes.map(({ id, systeme }) => ({ id, definition: systeme.definition })),
@@ -48,15 +101,9 @@ export function creerLeServeur({ systemes, dossierWeb }: OptionsDuServeur): Fast
     '/api/lots',
     { schema: { body: SCHEMA_DE_DEMANDE } },
     async (requete, reponse) => {
-      const { systeme: id, iterations, surcharges } = requete.body;
-      const systeme = parId.get(id);
-      if (systeme === undefined) {
-        return reponse.code(404).send({ message: `Système « ${id} » inconnu.` });
-      }
-      const graine = creerGraine(requete.body.graine);
-      if (!graine.ok) {
-        return reponse.code(400).send({ message: 'La graine doit aller de 0 à 4294967295.' });
-      }
+      const prepare = preparer(requete.body);
+      if (!prepare.ok)
+        return reponse.code(prepare.error.code).send({ message: prepare.error.message });
 
       // La réponse part au fil du lot : Fastify n'y touche plus.
       reponse.hijack();
@@ -72,18 +119,14 @@ export function creerLeServeur({ systemes, dossierWeb }: OptionsDuServeur): Fast
       });
       const ecrire = (evenement: EvenementDeLot) => flux.write(`${JSON.stringify(evenement)}\n`);
 
-      const pas = Math.max(1, Math.ceil(iterations / PROGRESSIONS_PAR_LOT));
-      const lot = await lancerUnLot(
-        simulateurQuiCede(simulateurEnMemoire(systeme)),
-        { surcharges, graine: graine.value, iterations },
-        {
-          signal: annulation.signal,
-          surProgression: (faites, total) => {
-            if (faites % pas === 0 || faites === total)
-              ecrire({ type: 'progression', faites, total });
-          },
+      const pas = Math.max(1, Math.ceil(requete.body.iterations / PROGRESSIONS_PAR_LOT));
+      const lot = await jouer(prepare.value.systeme, prepare.value.graine, requete.body, {
+        signal: annulation.signal,
+        surProgression: (faites, total) => {
+          if (faites % pas === 0 || faites === total)
+            ecrire({ type: 'progression', faites, total });
         },
-      );
+      });
       if (lot.ok) ecrire({ type: 'resume', resume: resumerLeLot(lot.value) });
       // Annulé : personne n'écoute plus, il n'y a rien à écrire.
       else if (lot.error.kind !== 'lot-annule') {
@@ -91,6 +134,52 @@ export function creerLeServeur({ systemes, dossierWeb }: OptionsDuServeur): Fast
       }
       flux.end();
       return reponse;
+    },
+  );
+
+  app.get('/api/lancements', () => historique.lister());
+
+  app.get<{ Params: { id: number } }>(
+    '/api/lancements/:id',
+    { schema: { params: SCHEMA_D_IDENTIFIANT } },
+    (requete, reponse) => {
+      const lancement = historique.lire(requete.params.id);
+      if (lancement === null)
+        return reponse.code(404).send({ message: introuvable(requete.params.id) });
+      return lancement;
+    },
+  );
+
+  // Le lot est rejoué ici plutôt que reçu de l'interface : un résultat enregistré vient toujours
+  // du système lui-même, avec ces réglages et cette graine.
+  app.post<{ Body: DemandeDeLotADistance & { nom?: string } }>(
+    '/api/lancements',
+    { schema: { body: SCHEMA_D_ENREGISTREMENT } },
+    async (requete, reponse) => {
+      const prepare = preparer(requete.body);
+      if (!prepare.ok)
+        return reponse.code(prepare.error.code).send({ message: prepare.error.message });
+      const lot = await jouer(prepare.value.systeme, prepare.value.graine, requete.body);
+      if (!lot.ok) return reponse.code(400).send({ message: expliquerUnProblemeDeLot(lot.error) });
+      const resume = resumerLeLot(lot.value);
+      const nom = requete.body.nom?.trim() ?? '';
+      const lancement = historique.enregistrer({
+        systeme: requete.body.systeme,
+        nom: nom === '' ? nomParDefaut(resume) : nom,
+        resume,
+      });
+      return reponse.code(201).send(apercuDe(lancement));
+    },
+  );
+
+  app.delete<{ Params: { id: number } }>(
+    '/api/lancements/:id',
+    { schema: { params: SCHEMA_D_IDENTIFIANT } },
+    (requete, reponse) => {
+      if (!historique.supprimer(requete.params.id)) {
+        return reponse.code(404).send({ message: introuvable(requete.params.id) });
+      }
+      return reponse.code(204).send();
     },
   );
 

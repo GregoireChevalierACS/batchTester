@@ -151,6 +151,48 @@ export function proportionDeWilson(succes: number, total: number): Proportion {
   };
 }
 
+/** Intervalle de confiance à 95 % d'une moyenne (approximation normale, comme ecartDeMoyennes). */
+export function intervalleDeLaMoyenne({ moyenne, ecartType, n }: Resume): {
+  readonly basse: number;
+  readonly haute: number;
+} {
+  const marge = (Z_95 * ecartType) / Math.sqrt(n);
+  return { basse: moyenne - marge, haute: moyenne + marge };
+}
+
+/** Écart b − a entre deux lots, et son intervalle de confiance à 95 %. */
+export interface Ecart {
+  readonly ecart: number;
+  readonly basse: number;
+  readonly haute: number;
+}
+
+/** Un écart est significatif quand son intervalle de confiance exclut zéro. */
+export const estSignificatif = ({ basse, haute }: Ecart): boolean => basse > 0 || haute < 0;
+
+/**
+ * Écart b − a entre deux proportions, avec l'intervalle de Newcombe (méthode 10), construit à
+ * partir des intervalles de Wilson de chaque lot : il reste juste près de 0 et de 1.
+ */
+export function ecartDeProportions(a: Proportion, b: Proportion): Ecart {
+  const ecart = b.proportion - a.proportion;
+  return {
+    ecart,
+    basse: ecart - Math.sqrt((b.proportion - b.basse) ** 2 + (a.haute - a.proportion) ** 2),
+    haute: ecart + Math.sqrt((b.haute - b.proportion) ** 2 + (a.proportion - a.basse) ** 2),
+  };
+}
+
+/**
+ * Écart b − a entre deux moyennes, intervalle de Welch en approximation normale. Juste à partir
+ * de quelques dizaines d'itérations par lot ; en deçà, il est un peu trop étroit.
+ */
+export function ecartDeMoyennes(a: Resume, b: Resume): Ecart {
+  const ecart = b.moyenne - a.moyenne;
+  const marge = Z_95 * Math.sqrt(a.ecartType ** 2 / a.n + b.ecartType ** 2 / b.n);
+  return { ecart, basse: ecart - marge, haute: ecart + marge };
+}
+
 export interface Frequence extends Proportion {
   readonly categorie: string;
   readonly effectif: number;

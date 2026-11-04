@@ -4,6 +4,10 @@ import {
   agregerLesSeries,
   CLASSES_DISCRETES_MAXIMALES,
   convergence,
+  ecartDeMoyennes,
+  ecartDeProportions,
+  estSignificatif,
+  intervalleDeLaMoyenne,
   frequences,
   histogramme,
   nombreDeClassesDeSturges,
@@ -198,6 +202,68 @@ describe('proportionDeWilson', () => {
         `proportion de ${String(succes)} sur ${String(total)} : 0 ≤ succès ≤ total, total > 0`,
       ),
     );
+  });
+});
+
+describe('écarts entre deux lots', () => {
+  it("donne l'intervalle de Newcombe de l'exemple de référence (56/70 contre 48/80)", () => {
+    const { ecart, basse, haute } = ecartDeProportions(
+      proportionDeWilson(48, 80),
+      proportionDeWilson(56, 70),
+    );
+    expect(ecart).toBeCloseTo(0.2, 12);
+    expect(basse).toBeCloseTo(0.0524, 4);
+    expect(haute).toBeCloseTo(0.3339, 4);
+  });
+
+  it('change de signe quand on inverse les lots', () => {
+    const a = proportionDeWilson(10, 40);
+    const b = proportionDeWilson(25, 50);
+    const direct = ecartDeProportions(a, b);
+    const inverse = ecartDeProportions(b, a);
+    expect(inverse.ecart).toBeCloseTo(-direct.ecart, 12);
+    expect(inverse.basse).toBeCloseTo(-direct.haute, 12);
+    expect(inverse.haute).toBeCloseTo(-direct.basse, 12);
+  });
+
+  it("donne l'intervalle de Welch d'un écart de moyennes", () => {
+    const a = resumer([1, 2, 3, 4, 5]);
+    const b = resumer([3, 4, 5, 6, 7]);
+    if (a === null || b === null) throw new Error('résumés vides');
+    // Écart 2, erreur type √(2,5/5 + 2,5/5) = 1.
+    expect(ecartDeMoyennes(a, b)).toEqual({
+      ecart: 2,
+      basse: 2 - 1.959963984540054,
+      haute: 2 + 1.959963984540054,
+    });
+  });
+
+  it("élargit l'intervalle de Welch avec l'erreur type", () => {
+    const a = resumer([1, 2, 3, 4, 5]);
+    const b = resumer([2, 4, 6, 8, 10]);
+    if (a === null || b === null) throw new Error('résumés vides');
+    // Écart 3, erreur type √(2,5/5 + 10/5) = √2,5.
+    const { ecart, basse, haute } = ecartDeMoyennes(a, b);
+    expect(ecart).toBe(3);
+    expect(haute - ecart).toBeCloseTo(1.959963984540054 * Math.sqrt(2.5), 12);
+    expect(ecart - basse).toBeCloseTo(1.959963984540054 * Math.sqrt(2.5), 12);
+  });
+
+  it("donne l'intervalle de confiance d'une moyenne", () => {
+    const r = resumer([1, 2, 3, 4, 5]);
+    if (r === null) throw new Error('résumé vide');
+    // Écart-type √2,5, erreur type √(2,5 / 5).
+    const marge = 1.959963984540054 * Math.sqrt(0.5);
+    const { basse, haute } = intervalleDeLaMoyenne(r);
+    expect(basse).toBeCloseTo(3 - marge, 12);
+    expect(haute).toBeCloseTo(3 + marge, 12);
+  });
+
+  it("n'est significatif que si l'intervalle exclut zéro", () => {
+    expect(estSignificatif({ ecart: 0.1, basse: 0.01, haute: 0.2 })).toBe(true);
+    expect(estSignificatif({ ecart: -0.1, basse: -0.2, haute: -0.01 })).toBe(true);
+    expect(estSignificatif({ ecart: 0.1, basse: -0.01, haute: 0.2 })).toBe(false);
+    expect(estSignificatif({ ecart: 0, basse: 0, haute: 0 })).toBe(false);
   });
 });
 

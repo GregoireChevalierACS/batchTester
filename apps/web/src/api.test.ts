@@ -56,7 +56,9 @@ describe('liste des systèmes', () => {
   it("refuse une réponse qui n'est pas une liste de systèmes", async () => {
     for (const corps of [{ id: 'combat' }, [{ id: 'combat' }], [null]]) {
       const { chercher } = fauxFetch(() => enJson(corps));
-      await expect(creerLApi(chercher).systemes()).rejects.toThrow('Liste des systèmes illisible.');
+      await expect(creerLApi(chercher).systemes()).rejects.toThrow(
+        'Réponse illisible pour /api/systemes.',
+      );
     }
   });
 
@@ -121,5 +123,48 @@ describe('lancer un lot', () => {
     const flux_casse = fauxFetch(() => new Response(flux('{pas du json}\n')));
     const [probleme] = await lancer(flux_casse.chercher);
     expect(probleme?.type === 'probleme' && probleme.message).toMatch(/^SyntaxError/);
+  });
+});
+
+describe('historique', () => {
+  const APERCU = { id: 1, nom: 'essai', systeme: 'combat' };
+
+  it('liste, lit, enregistre et supprime des lancements', async () => {
+    const reponses = [enJson([APERCU]), enJson({ ...APERCU, resume: {} }), enJson(APERCU, 201)];
+    const { chercher, demandes } = fauxFetch(
+      () => reponses.shift() ?? new Response(null, { status: 204 }),
+    );
+    const api = creerLApi(chercher);
+    expect(await api.lancements()).toEqual([APERCU]);
+    expect(await api.lancement(1)).toEqual({ ...APERCU, resume: {} });
+    expect(await api.enregistrer(DEMANDE, 'essai')).toEqual(APERCU);
+    await api.supprimer(1);
+    expect(demandes.map((d) => [d.url, d.init?.method ?? 'GET'])).toEqual([
+      ['/api/lancements', 'GET'],
+      ['/api/lancements/1', 'GET'],
+      ['/api/lancements', 'POST'],
+      ['/api/lancements/1', 'DELETE'],
+    ]);
+    expect(demandes[2]?.init?.body).toBe(JSON.stringify({ ...DEMANDE, nom: 'essai' }));
+  });
+
+  it('refuse des réponses illisibles', async () => {
+    const api = creerLApi(fauxFetch(() => enJson([{ id: 1 }])).chercher);
+    await expect(api.lancements()).rejects.toThrow('Réponse illisible pour /api/lancements.');
+    const sansResume = creerLApi(fauxFetch(() => enJson(APERCU)).chercher);
+    await expect(sansResume.lancement(1)).rejects.toThrow(
+      'Réponse illisible pour /api/lancements/1.',
+    );
+    const vide = creerLApi(fauxFetch(() => enJson(null, 201)).chercher);
+    await expect(vide.enregistrer(DEMANDE, '')).rejects.toThrow(
+      'Réponse illisible pour /api/lancements.',
+    );
+  });
+
+  it('rapporte le message du serveur quand une suppression échoue', async () => {
+    const api = creerLApi(
+      fauxFetch(() => enJson({ message: 'Lancement n° 9 introuvable.' }, 404)).chercher,
+    );
+    await expect(api.supprimer(9)).rejects.toThrow('Lancement n° 9 introuvable.');
   });
 });

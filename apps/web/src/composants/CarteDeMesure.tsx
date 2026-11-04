@@ -1,6 +1,6 @@
 import type { ResumeDeMesure } from '@batchtester/runner';
 import { useMemo, type ReactNode } from 'react';
-import { formaterNombre, formaterPourcentage } from '../format.ts';
+import { formaterNombre, formaterPourcentage, titreDeMesure as titreDe } from '../format.ts';
 import {
   etiquetteDeClasse,
   optionDeConvergence,
@@ -13,13 +13,6 @@ import { useTheme } from '../theme.ts';
 import { Graphique } from './Graphique.tsx';
 
 type ResumeDe<K extends ResumeDeMesure['kind']> = Extract<ResumeDeMesure, { kind: K }>;
-
-const titreDe = (mesure: ResumeDeMesure['mesure']): string => {
-  const titre = mesure.libelle ?? mesure.nom;
-  return mesure.kind !== 'categorie' && mesure.unite !== undefined
-    ? `${titre} (${mesure.unite})`
-    : titre;
-};
 
 /** Les valeurs de chaque graphique, lisibles sans couleur ni survol. */
 function Donnees({
