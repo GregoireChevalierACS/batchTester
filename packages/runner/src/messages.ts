@@ -3,7 +3,9 @@ import type {
   DefautDeValeur,
   ErreurDeResultat,
   ErreurDeValeur,
+  ValeurDeParametre,
 } from '@batchtester/core';
+import { POINTS_MAXIMAUX_PAR_BALAYAGE, type ProblemeDeBalayage } from './balayer.ts';
 import { ITERATIONS_MAXIMALES, type ProblemeDeLot } from './lancerUnLot.ts';
 
 // Textes affichés par la ligne de commande comme par l'interface : un même problème se lit
@@ -91,6 +93,36 @@ export function expliquerUnProblemeDeLot(probleme: ProblemeDeLot): string {
       return (
         `L'itération ${String(probleme.index)} (graine ${String(probleme.graine)}) a renvoyé un ` +
         `résultat non conforme :${liste(probleme.erreurs.map(erreurDeResultat))}`
+      );
+  }
+}
+
+const valeurLisible = (v: ValeurDeParametre): string => JSON.stringify(v);
+
+/** Message d'un balayage refusé ou interrompu. */
+export function expliquerUnProblemeDeBalayage(probleme: ProblemeDeBalayage): string {
+  switch (probleme.kind) {
+    case 'nombre-d-axes':
+      return `Un balayage a un ou deux axes (reçu : ${String(probleme.axes)}).`;
+    case 'parametre-inconnu':
+      return `« ${probleme.parametre} » : paramètre inconnu.`;
+    case 'parametre-en-double':
+      return `« ${probleme.parametre} » est balayé deux fois.`;
+    case 'axe-vide':
+      return `L'axe « ${probleme.parametre} » n'a aucune valeur.`;
+    case 'trop-de-points':
+      return (
+        `Le balayage a ${String(probleme.points)} points ; au plus ` +
+        `${String(POINTS_MAXIMAUX_PAR_BALAYAGE)}.`
+      );
+    case 'valeur-hors-definition':
+      return `« ${probleme.parametre} » = ${valeurLisible(probleme.valeur)} : ${RAISONS[probleme.raison]}.`;
+    case 'balayage-annule':
+      return 'Balayage annulé avant la fin.';
+    case 'point-en-echec':
+      return (
+        `Le point (${probleme.valeurs.map(valeurLisible).join(', ')}) a échoué : ` +
+        expliquerUnProblemeDeLot(probleme.probleme)
       );
   }
 }

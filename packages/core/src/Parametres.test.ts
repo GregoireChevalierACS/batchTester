@@ -4,8 +4,11 @@ import {
   lireUneValeur,
   lireUnNombre,
   lireUnTexte,
+  POINTS_MAXIMAUX_PAR_AXE,
   resoudreLesValeurs,
+  valeursEchelonnees,
   valeursParDefaut,
+  valeursPossibles,
   verifierUnParametre,
   type DefBooleen,
   type DefChoix,
@@ -210,5 +213,75 @@ describe('lecture typée depuis une simulation', () => {
     expect(() => lireUnBooleen(valeurs, 'classe')).toThrow(
       new TypeError('paramètre « classe » : booléen attendu'),
     );
+  });
+});
+
+describe('valeurs d’un balayage', () => {
+  it('donne toutes les valeurs d’un choix ou d’un booléen', () => {
+    expect(valeursPossibles(CLASSE)).toEqual(['guerrier', 'mage']);
+    expect(valeursPossibles(BOUCLIER)).toEqual([false, true]);
+  });
+
+  it('répartit régulièrement les valeurs, bornes comprises', () => {
+    expect(valeursEchelonnees(PV, 100, 200, 5)).toEqual({
+      ok: true,
+      value: [100, 125, 150, 175, 200],
+    });
+    expect(valeursEchelonnees(PV, 200, 100, 3)).toEqual({ ok: true, value: [200, 150, 100] });
+    expect(valeursEchelonnees(PV, 42, 300, 1)).toEqual({ ok: true, value: [42] });
+  });
+
+  it('ramène chaque valeur sur la grille et retire les doublons', () => {
+    expect(valeursEchelonnees(PV, 1, 3, 10)).toEqual({ ok: true, value: [1, 2, 3] });
+    expect(valeursEchelonnees(PRECISION, 0.1, 0.2, 3)).toEqual({
+      ok: true,
+      value: [0.1, 0.15, 0.2],
+    });
+    expect(valeursEchelonnees({ ...PRECISION, pas: 0.05 }, 0, 0.12, 3)).toEqual({
+      ok: true,
+      value: [0, 0.05, 0.1],
+    });
+  });
+
+  it('compte les crans à partir du minimum', () => {
+    const def = { ...PRECISION, min: 0.3, max: 2, pas: 0.5, defaut: 0.3 };
+    expect(valeursEchelonnees(def, 0.3, 1.8, 4)).toEqual({ ok: true, value: [0.3, 0.8, 1.3, 1.8] });
+    // 2,1 n'est pas sur un cran : le dernier cran atteignable est 1,8, pas 2,3.
+    const horsGrille = { ...def, max: 2.1 };
+    expect(valeursEchelonnees(horsGrille, 0.3, 2.1, 2)).toEqual({ ok: true, value: [0.3, 1.8] });
+  });
+
+  it('atteint le maximum malgré l’arrondi des flottants (0,3 / 0,1 = 2,9999999999999996)', () => {
+    const def = { ...PRECISION, min: 0, max: 0.3, pas: 0.1, defaut: 0 };
+    expect(valeursEchelonnees(def, 0, 0.3, 4)).toEqual({ ok: true, value: [0, 0.1, 0.2, 0.3] });
+  });
+
+  it('ne dépasse jamais le maximum quand il ne tombe pas sur un cran', () => {
+    const def = { ...PRECISION, min: 0, max: 1, pas: 0.4, defaut: 0 };
+    expect(valeursEchelonnees(def, 0, 1, 3)).toEqual({ ok: true, value: [0, 0.4, 0.8] });
+  });
+
+  it.each([0, -1, 1.5, POINTS_MAXIMAUX_PAR_AXE + 1])('refuse %d points', (points) => {
+    expect(valeursEchelonnees(PV, 1, 10, points)).toEqual({
+      ok: false,
+      error: { kind: 'points-invalides', points },
+    });
+  });
+
+  it('accepte le nombre maximal de points', () => {
+    expect(valeursEchelonnees(PV, 1, 500, POINTS_MAXIMAUX_PAR_AXE).ok).toBe(true);
+    expect(POINTS_MAXIMAUX_PAR_AXE).toBe(50);
+  });
+
+  it.each([
+    [0, 10],
+    [1, 501],
+    [Number.NaN, 10],
+    [1, Number.POSITIVE_INFINITY],
+  ])('refuse la plage %d → %d', (de, a) => {
+    expect(valeursEchelonnees(PV, de, a, 3)).toEqual({
+      ok: false,
+      error: { kind: 'plage-hors-bornes', de, a },
+    });
   });
 });

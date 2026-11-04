@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ProblemeDeLot } from './lancerUnLot.ts';
-import { expliquerUnProblemeDeLot } from './messages.ts';
+import type { ProblemeDeBalayage } from './balayer.ts';
+import { expliquerUnProblemeDeBalayage, expliquerUnProblemeDeLot } from './messages.ts';
 import { graine } from './testing/index.ts';
 
 describe('expliquer un problème de lot', () => {
@@ -104,5 +105,26 @@ describe('expliquer un problème de lot', () => {
         '  - mesure « vainqueur » : catégorie « C » inconnue',
       ].join('\n'),
     );
+  });
+});
+
+describe('expliquer un problème de balayage', () => {
+  it.each<[ProblemeDeBalayage, string]>([
+    [{ kind: 'nombre-d-axes', axes: 3 }, 'Un balayage a un ou deux axes (reçu : 3).'],
+    [{ kind: 'parametre-inconnu', parametre: 'x' }, '« x » : paramètre inconnu.'],
+    [{ kind: 'parametre-en-double', parametre: 'x' }, '« x » est balayé deux fois.'],
+    [{ kind: 'axe-vide', parametre: 'x' }, "L'axe « x » n'a aucune valeur."],
+    [{ kind: 'trop-de-points', points: 441 }, 'Le balayage a 441 points ; au plus 400.'],
+    [
+      { kind: 'valeur-hors-definition', parametre: 'pvA', valeur: 0, raison: 'hors-bornes' },
+      '« pvA » = 0 : hors des bornes.',
+    ],
+    [{ kind: 'balayage-annule' }, 'Balayage annulé avant la fin.'],
+    [
+      { kind: 'point-en-echec', valeurs: [3, 'A'], probleme: { kind: 'lot-annule' } },
+      'Le point (3, "A") a échoué : Lot annulé avant la fin.',
+    ],
+  ])('%j', (probleme, message) => {
+    expect(expliquerUnProblemeDeBalayage(probleme)).toBe(message);
   });
 });
