@@ -32,6 +32,26 @@ describe('expliquer un problème', () => {
       'Impossible de charger « x.ts » : Cannot find module',
     ],
     [
+      {
+        kind: 'manifeste-illisible',
+        chemin: 'des/systeme.json',
+        message: 'un objet JSON est attendu',
+      },
+      '« des/systeme.json » illisible : un objet JSON est attendu',
+    ],
+    [
+      { kind: 'lancement-impossible', commande: 'python', message: 'ENOENT' },
+      'Impossible de lancer « python » : ENOENT',
+    ],
+    [
+      { kind: 'definition-absente', commande: 'python', message: 'code 1' },
+      "« python » n'a pas annoncé sa définition : code 1",
+    ],
+    [
+      { kind: 'definition-illisible', commande: 'python', ligne: 'bonjour' },
+      '« python » a annoncé une définition illisible : bonjour',
+    ],
+    [
       { kind: 'export-invalide', chemin: 'x.ts' },
       "« x.ts » n'exporte pas de système par défaut (definition et simuler).",
     ],

@@ -68,6 +68,27 @@ describe('ligne de commande', () => {
     });
   });
 
+  it('joue un système externe, et donne deux fois le même rapport avec la même graine', async () => {
+    const manifeste = 'packages/adapters/fixtures/systemes/externe/systeme.json';
+    const premier = await lancer(manifeste, '-n', '50', '-g', '9');
+    const second = await lancer(manifeste, '-n', '50', '-g', '9');
+    expect(premier).toMatchObject({ code: SORTIE_OK, erreurs: '' });
+    expect(premier.sortie).toContain(
+      'Pile ou face externe — version 1.0.0\n50 itérations · graine 9',
+    );
+    expect(second.sortie).toBe(premier.sortie);
+  });
+
+  it('explique un système externe qui ne démarre pas', async () => {
+    const { code, erreurs } = await lancer(
+      'packages/adapters/fixtures/systemes/manifesteCasse/systeme.json',
+    );
+    expect(code).toBe(SORTIE_ECHEC);
+    expect(erreurs).toMatch(
+      /systeme\.json » illisible : « arguments » doit être une liste de textes\n$/u,
+    );
+  });
+
   it('explique un système impossible à charger', async () => {
     const { code, erreurs } = await lancer('packages/adapters/fixtures/pasUnSysteme.ts');
     expect(code).toBe(SORTIE_ECHEC);

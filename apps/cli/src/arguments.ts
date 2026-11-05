@@ -7,7 +7,8 @@ export const GRAINE_PAR_DEFAUT = 1;
 
 export const AIDE = `Usage : pnpm simuler <système> [options]
 
-  <système>                chemin du module dont l'export par défaut est le système
+  <système>                module TypeScript dont l'export par défaut est le système,
+                           ou systeme.json d'un système externe (autre langage)
 
 Options :
   -n, --iterations <n>     nombre d'itérations (défaut : ${String(ITERATIONS_PAR_DEFAUT)})

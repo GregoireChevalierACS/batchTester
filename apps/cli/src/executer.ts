@@ -1,4 +1,4 @@
-import { chargerUnSysteme, simulateurEnMemoire } from '@batchtester/adapters';
+import { ouvrirUnSysteme } from '@batchtester/adapters';
 import { lancerUnLot, resumerLeLot } from '@batchtester/runner';
 import { AIDE, lireLesArguments } from './arguments.ts';
 import { interpreterLesParametres } from './interpreterLesParametres.ts';
@@ -34,7 +34,7 @@ export async function executer(
   }
 
   const { chemin, iterations, graine, parametres, simultanees, json } = commande.value;
-  const systeme = await chargerUnSysteme(chemin, repertoire);
+  const systeme = await ouvrirUnSysteme(chemin, repertoire);
   if (!systeme.ok) {
     sorties.ecrireErreur(`${expliquer(systeme.error)}\n`);
     return SORTIE_ECHEC;
@@ -42,10 +42,12 @@ export async function executer(
 
   const surcharges = interpreterLesParametres(systeme.value.definition.parametres, parametres);
   const lot = await lancerUnLot(
-    simulateurEnMemoire(systeme.value),
+    systeme.value.simulateur,
     { surcharges, graine, iterations },
     simultanees === null ? {} : { simultanees },
   );
+  // Un système externe est un programme lancé pour ce lot : il s'arrête avec lui.
+  await systeme.value.fermer();
   if (!lot.ok) {
     sorties.ecrireErreur(`${expliquer(lot.error)}\n`);
     return SORTIE_ECHEC;
