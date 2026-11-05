@@ -35,6 +35,11 @@ jobs:
       - name: Installation reproductible
         run: pnpm install --frozen-lockfile
 
+      # Le système d'exemple « des » est écrit en Python : sa suite de contrat le lance.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
       - name: Audit des dépendances
         run: pnpm audit --audit-level high
 
