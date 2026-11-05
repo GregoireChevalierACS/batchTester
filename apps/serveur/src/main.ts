@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   decouvrirLesSystemes,
-  expliquerUnProblemeDeChargement,
+  expliquerUnProblemeDOuverture,
   ouvrirLHistorique,
 } from '@batchtester/adapters';
 import { creerLeServeur } from './serveur.ts';
@@ -16,7 +16,7 @@ const HISTORIQUE =
   process.env['BATCHTESTER_HISTORIQUE'] ?? join(RACINE, 'donnees', 'historique.sqlite');
 
 const { systemes, problemes } = await decouvrirLesSystemes(join(RACINE, 'systemes'));
-for (const probleme of problemes) console.error(expliquerUnProblemeDeChargement(probleme));
+for (const probleme of problemes) console.error(expliquerUnProblemeDOuverture(probleme));
 
 mkdirSync(dirname(HISTORIQUE), { recursive: true });
 const historique = ouvrirLHistorique(HISTORIQUE);
@@ -26,8 +26,13 @@ const app = creerLeServeur({
   historique,
   ...(existsSync(DOSSIER_WEB) ? { dossierWeb: DOSSIER_WEB } : {}),
 });
-app.addHook('onClose', () => {
+app.addHook('onClose', async () => {
   historique.fermer();
+  await Promise.all(systemes.map((s) => s.fermer()));
+});
+// Ctrl+C : arrêter proprement les programmes des systèmes externes.
+process.once('SIGINT', () => {
+  void app.close().then(() => process.exit(0));
 });
 // Uniquement sur la boucle locale : l'outil exécute du code du dépôt, il n'est pas fait pour le réseau.
 const adresse = await app.listen({ host: '127.0.0.1', port: PORT });

@@ -1,10 +1,10 @@
-import type { SystemeDecouvert } from '@batchtester/adapters';
+import { systemeTypeScript, type SystemeDecouvert } from '@batchtester/adapters';
 import { HistoriqueEnMemoire } from '@batchtester/runner/testing';
 import { describe, expect, it } from 'vitest';
 import combat from '../../../systemes/combat/src/index.ts';
 import { creerLeServeur } from './serveur.ts';
 
-const SYSTEMES: SystemeDecouvert[] = [{ id: 'combat', systeme: combat }];
+const SYSTEMES: SystemeDecouvert[] = [{ id: 'combat', ...systemeTypeScript(combat) }];
 const serveur = () => creerLeServeur({ systemes: SYSTEMES, historique: new HistoriqueEnMemoire() });
 
 const balayage = (corps: Record<string, unknown> = {}) => ({
@@ -107,7 +107,7 @@ describe('annulation d’un balayage', () => {
       },
     };
     const ouvert = creerLeServeur({
-      systemes: [{ id: 'lent', systeme: lent }],
+      systemes: [{ id: 'lent', ...systemeTypeScript(lent) }],
       historique: new HistoriqueEnMemoire(),
     });
     try {

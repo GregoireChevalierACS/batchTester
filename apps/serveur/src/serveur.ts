@@ -1,10 +1,6 @@
 import fastifyStatic from '@fastify/static';
-import {
-  simulateurEnMemoire,
-  simulateurQuiCede,
-  type SystemeDecouvert,
-} from '@batchtester/adapters';
-import { creerGraine, err, ok, type Graine, type Result, type Systeme } from '@batchtester/core';
+import type { SystemeDecouvert } from '@batchtester/adapters';
+import { creerGraine, err, ok, type Graine, type Result } from '@batchtester/core';
 import {
   apercuDe,
   expliquerUnProblemeDeBalayage,
@@ -19,6 +15,7 @@ import {
   type EvenementDeLot,
   type Historique,
   type OptionsDeLot,
+  type Simulateur,
 } from '@batchtester/runner';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 
@@ -119,37 +116,35 @@ export function creerLeServeur({
   dossierWeb,
 }: OptionsDuServeur): FastifyInstance {
   const app = Fastify();
-  const parId = new Map(systemes.map(({ id, systeme }) => [id, systeme]));
+  const parId = new Map(systemes.map((systeme) => [systeme.id, systeme.simulateur]));
 
   const preparer = (
     demande: DemandeDeLotADistance,
-  ): Result<{ systeme: Systeme; graine: Graine }, Refus> => {
-    const systeme = parId.get(demande.systeme);
-    if (systeme === undefined) {
+  ): Result<{ simulateur: Simulateur; graine: Graine }, Refus> => {
+    const simulateur = parId.get(demande.systeme);
+    if (simulateur === undefined) {
       return err({ code: 404, message: `Système « ${demande.systeme} » inconnu.` });
     }
     const graine = creerGraine(demande.graine);
     if (!graine.ok) return err({ code: 400, message: 'La graine doit aller de 0 à 4294967295.' });
-    return ok({ systeme, graine: graine.value });
+    return ok({ simulateur, graine: graine.value });
   };
 
   const jouer = (
-    systeme: Systeme,
+    simulateur: Simulateur,
     graine: Graine,
     demande: DemandeDeLotADistance,
     options: OptionsDeLot = {},
   ) =>
     lancerUnLot(
-      simulateurQuiCede(simulateurEnMemoire(systeme)),
+      simulateur,
       { surcharges: demande.surcharges, graine, iterations: demande.iterations },
       options,
     );
 
   const introuvable = (id: number): string => `Lancement n° ${String(id)} introuvable.`;
 
-  app.get('/api/systemes', () =>
-    systemes.map(({ id, systeme }) => ({ id, definition: systeme.definition })),
-  );
+  app.get('/api/systemes', () => systemes.map(({ id, definition }) => ({ id, definition })));
 
   app.post<{ Body: DemandeDeLotADistance }>(
     '/api/lots',
@@ -160,7 +155,7 @@ export function creerLeServeur({
         return reponse.code(prepare.error.code).send({ message: prepare.error.message });
 
       const { signal, ecrire, surProgression, fermer } = ouvrirUnFlux(reponse);
-      const lot = await jouer(prepare.value.systeme, prepare.value.graine, requete.body, {
+      const lot = await jouer(prepare.value.simulateur, prepare.value.graine, requete.body, {
         signal,
         surProgression,
       });
@@ -185,7 +180,7 @@ export function creerLeServeur({
       const { signal, ecrire, surProgression, fermer } = ouvrirUnFlux(reponse);
       const { surcharges, iterations, axes } = requete.body;
       const balayage = await lancerUnBalayage(
-        simulateurQuiCede(simulateurEnMemoire(prepare.value.systeme)),
+        prepare.value.simulateur,
         { surcharges, graine: prepare.value.graine, iterations, axes },
         { signal, surProgression },
       );
@@ -220,7 +215,7 @@ export function creerLeServeur({
       const prepare = preparer(requete.body);
       if (!prepare.ok)
         return reponse.code(prepare.error.code).send({ message: prepare.error.message });
-      const lot = await jouer(prepare.value.systeme, prepare.value.graine, requete.body);
+      const lot = await jouer(prepare.value.simulateur, prepare.value.graine, requete.body);
       if (!lot.ok) return reponse.code(400).send({ message: expliquerUnProblemeDeLot(lot.error) });
       const resume = resumerLeLot(lot.value);
       const nom = requete.body.nom?.trim() ?? '';

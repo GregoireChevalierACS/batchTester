@@ -1,8 +1,8 @@
-import { expliquerUnProblemeDeChargement, type ProblemeDeChargement } from '@batchtester/adapters';
+import { expliquerUnProblemeDOuverture, type ProblemeDOuverture } from '@batchtester/adapters';
 import { expliquerUnProblemeDeLot, type ProblemeDeLot } from '@batchtester/runner';
 import type { ErreurDArguments } from './arguments.ts';
 
-export type Probleme = ErreurDArguments | ProblemeDeChargement | ProblemeDeLot;
+export type Probleme = ErreurDArguments | ProblemeDOuverture | ProblemeDeLot;
 
 /** Message affiché pour un problème, en français, avec de quoi le corriger ou le rejouer. */
 export function expliquer(probleme: Probleme): string {
@@ -21,7 +21,11 @@ export function expliquer(probleme: Probleme): string {
       return `Paramètre « ${probleme.texte} » illisible : écrire nom=valeur.`;
     case 'module-introuvable':
     case 'export-invalide':
-      return expliquerUnProblemeDeChargement(probleme);
+    case 'manifeste-illisible':
+    case 'lancement-impossible':
+    case 'definition-absente':
+    case 'definition-illisible':
+      return expliquerUnProblemeDOuverture(probleme);
     case 'definition-invalide':
     case 'iterations-invalides':
     case 'simultanees-invalides':

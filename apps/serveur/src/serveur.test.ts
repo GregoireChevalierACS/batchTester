@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { SystemeDecouvert } from '@batchtester/adapters';
+import { systemeTypeScript, type SystemeDecouvert } from '@batchtester/adapters';
 import type { Systeme } from '@batchtester/core';
 
 import { HistoriqueEnMemoire } from '@batchtester/runner/testing';
@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import combat from '../../../systemes/combat/src/index.ts';
 import { creerLeServeur, PROGRESSIONS_PAR_LOT } from './serveur.ts';
 
-const SYSTEMES: SystemeDecouvert[] = [{ id: 'combat', systeme: combat }];
+const SYSTEMES: SystemeDecouvert[] = [{ id: 'combat', ...systemeTypeScript(combat) }];
 
 const lire = (corps: string): unknown[] =>
   corps
@@ -140,7 +140,7 @@ describe('annulation', () => {
       },
     };
     ouvert = creerLeServeur({
-      systemes: [{ id: 'lent', systeme: lent }],
+      systemes: [{ id: 'lent', ...systemeTypeScript(lent) }],
       historique: new HistoriqueEnMemoire(),
     });
     const adresse = await ouvert.listen({ host: '127.0.0.1', port: 0 });
