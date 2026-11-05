@@ -55,7 +55,19 @@ export default {
 } satisfies Systeme;
 ```
 
-Paramètres : `nombre` (min, max, pas), `entier`, `choix`, `booleen`. Mesures : `nombre`, `categorie`, `serie` (une valeur par tour). L'exemple complet est dans [systemes/combat](systemes/combat/src/combat.ts).
+Paramètres : `nombre` (min, max, pas), `entier`, `choix`, `booleen`. Mesures : `nombre`, `categorie`, `serie` (une valeur par tour). Exemples : [combat 1 contre 1](systemes/combat/src/combat.ts), [duel de cartes](systemes/cartes/src/cartes.ts).
+
+### Dans un autre langage
+
+Un dossier de `systemes/` avec un `systeme.json` est un système externe :
+
+```json
+{ "commande": "python", "arguments": ["des.py"] }
+```
+
+Le programme écrit sa définition en JSON sur sa première ligne, puis répond à chaque ligne `{"id", "valeurs", "graine"}` par `{"id", "resultat"}` ; son hasard doit venir de la graine reçue (protocole complet : [ADR 0003](docs/adr/0003-systemes-externes-json-par-ligne.md)). Exemple : [bataille de dés en Python](systemes/des/des.py), jouable aussi en ligne de commande : `pnpm --silent simuler systemes/des/systeme.json -n 500`.
+
+Chaque système du dépôt, quel que soit son langage, passe automatiquement la suite de contrat (même graine, même résultat ; résultats conformes à la définition).
 
 ## Vérifications
 
