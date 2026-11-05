@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { err, ok, type Result, type Systeme } from '@batchtester/core';
+import { err, ok, type DefinitionDeSysteme, type Result, type Systeme } from '@batchtester/core';
 import { messageDErreur } from './messageDErreur.ts';
 
 export type ProblemeDeChargement =
@@ -14,8 +14,11 @@ export type ProblemeDeChargement =
 export function aLaFormeDUnSysteme(candidat: unknown): candidat is Systeme {
   if (typeof candidat !== 'object' || candidat === null) return false;
   if (!('simuler' in candidat) || typeof candidat.simuler !== 'function') return false;
-  if (!('definition' in candidat)) return false;
-  const { definition } = candidat;
+  return 'definition' in candidat && aLaFormeDUneDefinition(candidat.definition);
+}
+
+/** Forme générale d'une définition : nom, version, listes de paramètres et de mesures. */
+export function aLaFormeDUneDefinition(definition: unknown): definition is DefinitionDeSysteme {
   return (
     typeof definition === 'object' &&
     definition !== null &&

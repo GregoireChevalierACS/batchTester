@@ -1,0 +1,1 @@
+{ "commande": "node", "arguments": ["../../externes/programme.mjs", "correct"] }
