@@ -85,16 +85,22 @@ Les simulations d'un système TypeScript tournent dans le processus principal : 
 
 Les distributions ne sont pas superposées : leurs classes diffèrent d'un lot à l'autre. La comparaison porte sur les moyennes et les quantiles, dans le tableau sous chaque graphique.
 
-## Phase 4 — Balayages et ouverture
+## Phase 4 — Balayages et ouverture ✅
 
 **Terminée quand** : un balayage sur une grille de deux paramètres produit sa carte de chaleur, et un système écrit hors TypeScript tourne par l'adapter externe.
 
 - [x] Mutation étendue au runner (100 %), en plus du noyau.
 - [x] Balayage d'un paramètre : l'indicateur choisi (moyenne d'une mesure ou taux d'une catégorie) selon la valeur, courbe et bande de l'intervalle à 95 %.
 - [x] Grille de deux paramètres : carte de chaleur à une seule teinte, bornes de l'échelle écrites. Choix et booléens balayés sur toutes leurs valeurs.
-- [ ] Adapter processus externe (JSON ligne par ligne), tenu par la même suite de contrat.
-- [ ] Exemple : mini jeu de cartes.
+- [x] Adapter processus externe (JSON ligne par ligne, ADR 0003), tenu par la même suite de contrat ; un dossier de `systemes/` avec `systeme.json` est découvert comme système externe.
+- [x] Exemple externe en Python : bataille de dés (`systemes/des`).
+- [x] Exemple : mini jeu de cartes (`systemes/cartes`).
+- [x] Tous les systèmes du dépôt passent la suite de contrat, quel que soit leur langage.
+
+## Plus tard
+
 - [ ] Simulateur en workers (`worker_threads`), si une itération devient coûteuse.
+- [ ] Balayages depuis la ligne de commande.
 
 ## Pièges rencontrés
 
@@ -110,4 +116,7 @@ Les distributions ne sont pas superposées : leurs classes diffèrent d'un lot �
 - **Séries par tour en fin de combat** : les derniers tours ne comptent que les combats encore en cours, si bien que leur moyenne peut remonter. Le nombre d'itérations par tour est dans le tableau de chaque série.
 - **Ajv en mode strict et types multiples** : `type: ['number', 'string']` déclenche un avertissement au démarrage de Fastify. Écrire `anyOf`.
 - **`??` compte comme une branche** pour la couverture V8 : un repli « au cas où » jamais atteint fait échouer le seuil de 100 %. Mieux vaut écrire le code sans repli impossible (index cherché puis `elementA`) que de le contourner.
+- **Écrire vers un programme qui vient de s'arrêter** (EPIPE) : sans gestionnaire d'erreur sur son entrée, le moteur tomberait. Cette course ne se reproduit pas de façon fiable en test (sous Windows, le tube garde les données) : le gestionnaire est exclu de la couverture, avec sa raison.
+- **`python3` sous Windows** est souvent un raccourci vers le Microsoft Store : le manifeste de `systemes/des` lance `python`, que la CI installe aussi (`actions/setup-python`).
+- **Une hypothèse d'équilibrage n'est pas un test** : « le paquet agressif gagne » était faux avec les règles du jeu de cartes (le paquet défensif l'emporte). Les tests vérifient que l'agressivité compte, pas dans quel sens.
 - **`pnpm simuler` sans `--silent`** ajoute l'en-tête de pnpm à la sortie : utiliser `pnpm --silent simuler …` pour rediriger le rapport dans un fichier.
